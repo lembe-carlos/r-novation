@@ -1,0 +1,21 @@
+# Variables d'environnement
+.env
+.env.local
+.env.production
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Dépendances (pas applicable ici)
+node_modules/

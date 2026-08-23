@@ -1,0 +1,827 @@
+// ═══════════════════════════════════════════════════════════════
+//  KAMER360 — marketplace-data.js
+//  Système de gestion des vraies données de la Marketplace
+//  Profil gérant + Services + Contacts + Images réelles
+// ═══════════════════════════════════════════════════════════════
+
+// Styles communs pour les formulaires de la page Marketplace
+var _S_INP = 'width:100%;padding:10px;border:1.5px solid var(--br);border-radius:8px;font-size:13px;box-sizing:border-box;outline:none;font-family:inherit';
+var _S_LBL = 'font-size:12px;font-weight:600;display:block;margin-bottom:5px;color:var(--tx)';
+var _S_SEL = 'width:100%;padding:10px;border:1.5px solid var(--br);border-radius:8px;font-size:13px;background:#fff;cursor:pointer;outline:none';
+var _S_GRD = 'display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;padding-top:8px';
+
+var MKT_DATA_KEY   = 'sm_marketplace_data';
+var _gmTabActif    = 'profil';
+var _gmModuleActif = null;
+
+// ══════════════════════════════════════════════════════════════
+//  STOCKAGE HYBRIDE : Supabase (principal) + localStorage (cache)
+//  Les données sont lisibles depuis n'importe quel appareil
+// ══════════════════════════════════════════════════════════════
+
+// ── Obtenir le client Supabase ──
+function _mktSb() {
+  try {
+    if (typeof window.supabase !== 'undefined' && typeof SM_CONFIG !== 'undefined' && SM_CONFIG.supabase && SM_CONFIG.supabase.url) {
+      return window.supabase.createClient(SM_CONFIG.supabase.url, SM_CONFIG.supabase.key);
+    }
+  } catch(e) { _logErr("marketplace-data.js", e); }
+  return null;
+}
+
+// ── Obtenir l'ID du gérant connecté (clé unique par supermarché) ──
+function _mktGerantId() {
+  try {
+    var u = JSON.parse(localStorage.getItem('sm_user') || '{}');
+    return u.supermarche_id || u.id || 'default';
+  } catch(e) { return 'default'; }
+}
+
+// ── Charger depuis localStorage (cache local) ──
+function mktDataLoad() {
+  try { return JSON.parse(localStorage.getItem(MKT_DATA_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+
+// ── Sauvegarder localement ──
+function _mktSaveLocal(data) {
+  try {
+    localStorage.setItem(MKT_DATA_KEY, JSON.stringify(data));
+    localStorage.setItem('sm_mkt_data_updated', Date.now().toString());
+    return true;
+  } catch(e) { return false; }
+}
+
+// ── Sauvegarder dans Supabase (async, sans bloquer l'UI) ──
+async function _mktSaveSupabase(data) {
+  var sb = _mktSb();
+  if (!sb) return false;
+  var gerantId = _mktGerantId();
+  // Exclure les base64 lourdes de Supabase (stocker URL à la place)
+  var dataToSave = JSON.parse(JSON.stringify(data));
+  try {
+    var res = await sb.from('marketplace_data').upsert({
+      gerant_id:  gerantId,
+      data:       dataToSave,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'gerant_id' });
+    return !res.error;
+  } catch(e) { return false; }
+}
+
+// ── Charger depuis Supabase et mettre à jour le cache ──
+async function mktDataLoadFromSupabase() {
+  var sb = _mktSb();
+  if (!sb) return mktDataLoad(); // fallback localStorage
+  var gerantId = _mktGerantId();
+  try {
+    var res = await sb.from('marketplace_data').select('data').eq('gerant_id', gerantId).single();
+    if (res.data && res.data.data) {
+      _mktSaveLocal(res.data.data); // mettre en cache local
+      return res.data.data;
+    }
+  } catch(e) { _logErr("marketplace-data.js", e); }
+  return mktDataLoad(); // fallback
+}
+
+// ── API publique : sauvegarder (local + Supabase) ──
+function mktDataSave(data) {
+  _mktSaveLocal(data);
+  _mktSaveSupabase(data).then(function(ok) {
+    if (!ok && typeof toast === 'function') {
+      // Pas bloquant — juste un avertissement discret
+    }
+  });
+  return true;
+}
+
+function mktDataGet(section) {
+  var d = mktDataLoad(); return d[section] || {};
+}
+
+function mktDataSet(section, value) {
+  var d = mktDataLoad(); d[section] = value; return mktDataSave(d);
+}
+
+// ── Charger depuis Supabase au démarrage de la page ──
+async function mktSyncFromSupabase() {
+  var data = await mktDataLoadFromSupabase();
+  if (data && Object.keys(data).length > 0) {
+    _mktSaveLocal(data);
+    // Rafraîchir l'affichage si la page est déjà ouverte
+    if (typeof initPageGestionMarketplace === 'function') {
+      var el = document.getElementById('page-gestion-marketplace');
+      if (el && el.classList.contains('active')) initPageGestionMarketplace();
+    }
+    // Rafraîchir la marketplace publique
+    if (typeof initMarketplace === 'function') initMarketplace();
+  }
+}
+
+// ── Upload image → base64 compressée ─────────────────────────
+function uploadImage(inputId, callback, maxW, maxH, quality) {
+  maxW = maxW || 600; maxH = maxH || 600; quality = quality || 0.75;
+  var input = document.getElementById(inputId);
+  if (!input || !input.files || !input.files[0]) { callback(null); return; }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var canvas = document.createElement('canvas');
+      var ratio  = Math.min(maxW / img.width, maxH / img.height, 1);
+      canvas.width  = Math.round(img.width  * ratio);
+      canvas.height = Math.round(img.height * ratio);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      callback(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function _prevProfil(inp) {
+  previewImage(inp.id, "prev-photo-profil");
+}
+
+function previewImage(inputId, previewId) {
+  var input   = document.getElementById(inputId);
+  var preview = document.getElementById(previewId);
+  if (!input || !preview || !input.files || !input.files[0]) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    preview.src = e.target.result;
+    preview.style.display = 'block';
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+// ── Bridge lecture données réelles → marketplace ──────────────
+function mktGetRealData(section, key) {
+  try {
+    var d = JSON.parse(localStorage.getItem(MKT_DATA_KEY) || '{}');
+    var items = d[section] && d[section][key];
+    if (items && items.length > 0) return items;
+  } catch(e) { _logErr("marketplace-data.js", e); }
+  return null;
+}
+
+function mktGetRealProfil() {
+  try { var d = JSON.parse(localStorage.getItem(MKT_DATA_KEY) || '{}'); return d.profil || null; }
+  catch(e) { return null; }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PAGE PRINCIPALE — gm-content
+// ══════════════════════════════════════════════════════════════
+function initPageGestionMarketplace() {
+  // Synchroniser depuis Supabase d'abord (pour avoir les données sur tout appareil)
+  mktSyncFromSupabase();
+  var z = document.getElementById('gm-content');
+  if (!z) return;
+
+  // Header avec onglets style app
+  z.innerHTML = ''
+    + '<div class="cd" style="margin-bottom:16px">'
+    +   '<div class="ch">'
+    +     '<div class="ct">Gestion de ma Marketplace</div>'
+    +   '</div>'
+    +   '<div style="display:flex;border-bottom:2px solid var(--br);margin:0 -16px;padding:0 16px">'
+    +     '<button id="gm-btn-profil" onclick="showGmTab(\'profil\')" '
+    +       'style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:700;cursor:pointer;border-bottom:3px solid #007A3D;color:#007A3D;margin-bottom:-2px">Mon profil public</button>'
+    +     '<button id="gm-btn-services" onclick="showGmTab(\'services\')" '
+    +       'style="padding:10px 20px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;color:#666">Mes services</button>'
+    +   '</div>'
+    + '</div>'
+    + '<div id="gm-section-profil"></div>'
+    + '<div id="gm-section-services" style="display:none"></div>';
+
+  // Forcer le rendu après insertion dans le DOM
+  setTimeout(function(){
+    try {
+      showGmTab('profil');
+    } catch(e) {
+      console.error('[Ma Marketplace] Erreur rendu:', e);
+      var z2 = document.getElementById('gm-content');
+      if (z2) z2.innerHTML += '<div style="color:red;padding:10px">Erreur: ' + e.message + '</div>';
+    }
+  }, 100);
+}
+
+function showGmTab(tab) {
+  _gmTabActif = tab;
+  var tabs = { profil:'profil', services:'services' };
+
+  // Activer/désactiver boutons
+  ['profil','services'].forEach(function(t) {
+    var btn = document.getElementById('gm-btn-' + t);
+    if (!btn) return;
+    if (t === tab) {
+      btn.style.borderBottom = '3px solid #007A3D';
+      btn.style.color = '#007A3D';
+      btn.style.fontWeight = '700';
+      btn.style.marginBottom = '-2px';
+    } else {
+      btn.style.borderBottom = 'none';
+      btn.style.color = '#666';
+      btn.style.fontWeight = '600';
+      btn.style.marginBottom = '0';
+    }
+  });
+
+  // Afficher/cacher sections
+  ['profil','services'].forEach(function(t) {
+    var el = document.getElementById('gm-section-' + t);
+    if (el) el.style.display = (t === tab) ? 'block' : 'none';
+  });
+
+  // Remplir si vide
+  if (tab === 'profil') {
+    try { renderGmProfil(); }
+    catch(e) { console.error('[renderGmProfil]', e); }
+  }
+  if (tab === 'services') {
+    try { renderGmServices(); }
+    catch(e) { console.error('[renderGmServices]', e); }
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ONGLET PROFIL PUBLIC
+// ══════════════════════════════════════════════════════════════
+function renderGmProfil() {
+  var z = document.getElementById('gm-section-profil');
+  if (!z) { console.warn('[Ma Marketplace] gm-section-profil introuvable'); return; }
+
+  var d    = mktDataGet('profil') || {};
+  var user = (typeof currentUser !== 'undefined' && currentUser) ? currentUser : {};
+
+  var nomVal  = d.nom  || ((user.prenom||'') + ' ' + (user.nom||'')).trim() || '';
+  var telVal  = d.tel  || user.tel  || '';
+  var emailVal= d.email|| user.email|| '';
+  var descVal = d.desc || '';
+  var villeVal= d.ville|| '';
+  var activVal= d.activite || '';
+
+  var villes = ['Douala','Yaounde','Bafoussam','Garoua','Maroua','Ngaoundere','Bertoua','Kribi','Limbe','Buea','Kumba','Bamenda'];
+  var villeOpts = villes.map(function(v){
+    return '<option value="' + v + '"' + (villeVal===v?' selected':'') + '>' + v + '</option>';
+  }).join('');
+
+  var photoSrc = (d.photo_base64 && d.photo_base64.startsWith('data:'))
+    ? d.photo_base64
+    : 'https://picsum.photos/seed/profil/120/120';
+
+  var html = '<div class="cd" style="margin-bottom:14px">';
+  html += '<div class="ch"><div class="ct">Mon profil public</div></div>';
+
+  // Photo de profil
+  html += '<div style="text-align:center;margin-bottom:20px">';
+  html += '<img loading="lazy" id="prev-photo-profil" src="' + photoSrc + '" style="width:90px;height:90px;border-radius:50%;object-fit:cover;border:3px solid #007A3D;margin-bottom:10px">';
+  html += '<br><label style="background:#007A3D;color:#fff;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700">';
+  html += 'Changer la photo <input type="file" accept="image/*" style="display:none" onchange="previewImage(this.id,\'prev-photo-profil\')" id="inp-photo-profil"></label>';
+  html += '</div>';
+
+  // Formulaire
+  var inpStyle = 'width:100%;padding:10px 12px;border:1.5px solid #d1d5db;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:12px;font-family:inherit';
+
+  html += '<label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Nom de votre business *</label>';
+  html += '<input id="gm-nom" type="text" value="' + _escHtml(nomVal) + '" placeholder="Ex: Salon Beauté Plus" style="' + inpStyle + '">';
+
+  html += '<label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Secteur d&#39;activite *</label>';
+  html += '<input id="gm-activite" type="text" value="' + _escHtml(activVal) + '" placeholder="Ex: Coiffure, Restauration, BTP..." style="' + inpStyle + '">';
+
+  html += '<label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Telephone *</label>';
+  html += '<input id="gm-tel" type="tel" value="' + _escHtml(telVal) + '" placeholder="+237 6XX XX XX XX" style="' + inpStyle + '">';
+
+  html += '<label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Email</label>';
+  html += '<input id="gm-email" type="email" value="' + _escHtml(emailVal) + '" placeholder="votre@email.com" style="' + inpStyle + '">';
+
+  html += '<label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Ville</label>';
+  html += '<select id="gm-ville" style="' + inpStyle + '">';
+  html += '<option value="">-- Choisir une ville --</option>' + villeOpts;
+  html += '</select>';
+
+  html += '<label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px">Description de votre activité</label>';
+  html += '<textarea id="gm-desc" rows="4" placeholder="Decrivez vos services, horaires, points forts..." style="' + inpStyle + 'resize:vertical">' + _escHtml(descVal) + '</textarea>';
+
+  html += '<button onclick="sauvegarderProfilMarketplace()" style="width:100%;background:linear-gradient(135deg,#007A3D,#00A852);color:#fff;border:none;padding:14px;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;font-family:inherit">Enregistrer mon profil public</button>';
+  html += '</div>';
+
+  z.innerHTML = html;
+  console.log('[Ma Marketplace] Profil rendu: ' + html.length + ' chars');
+}
+
+
+
+function _escHtml(s) { return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function sauvegarderProfilMarketplace() {
+  var btn = document.querySelector('[onclick="sauvegarderProfilMarketplace()"]');
+  if (btn) { btn.textContent = 'Enregistrement...'; btn.disabled = true; }
+
+  // Récupérer la photo déjà enregistrée (ne pas l'écraser si pas de nouvelle)
+  var existingProfil = mktDataGet('profil') || {};
+
+  var data = {
+    nom:           (document.getElementById('gm-nom')      || {}).value || '',
+    activite:      (document.getElementById('gm-activite') || {}).value || '',
+    tel:           (document.getElementById('gm-tel')      || {}).value || '',
+    email:         (document.getElementById('gm-email')    || {}).value || '',
+    ville:         (document.getElementById('gm-ville')    || {}).value || '',
+    desc:          (document.getElementById('gm-desc')     || {}).value || '',
+    // Conserver les champs existants non affichés dans ce formulaire
+    whatsapp:      existingProfil.whatsapp  || '',
+    etablissement: existingProfil.etablissement || '',
+    adresse:       existingProfil.adresse   || '',
+    horaires:      existingProfil.horaires  || '',
+    photo_base64:  existingProfil.photo_base64 || '',
+  };
+
+  function finalize(b64) {
+    if (b64) {
+      data.photo_base64 = b64;
+      // Mettre à jour l'aperçu immédiatement
+      var prev = document.getElementById('prev-photo-profil');
+      if (prev) { prev.src = b64; prev.style.display = 'block'; }
+    }
+    var ok = mktDataSet('profil', data);
+    if (btn) { btn.textContent = 'Enregistrer mon profil public'; btn.disabled = false; }
+    if (typeof toast === 'function') toast(ok ? 'Photo et profil enregistres !' : 'Erreur de sauvegarde', ok ? 'success' : 'error');
+  }
+
+  var inp = document.getElementById('inp-photo-profil');
+  if (inp && inp.files && inp.files[0]) {
+    // Lire le fichier directement et compresser
+    var file = inp.files[0];
+    var reader = new FileReader();
+    reader.onload = function(evt) {
+      var img = new Image();
+      img.onload = function() {
+        // Compresser en canvas 300x300 max
+        var canvas = document.createElement('canvas');
+        var maxSize = 300;
+        var ratio = Math.min(maxSize / img.width, maxSize / img.height, 1);
+        canvas.width  = Math.round(img.width  * ratio);
+        canvas.height = Math.round(img.height * ratio);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        // Essayer qualité 0.7 d'abord
+        var b64 = canvas.toDataURL('image/jpeg', 0.7);
+        // Si encore trop grand, réduire encore
+        if (b64.length > 150000) {
+          b64 = canvas.toDataURL('image/jpeg', 0.5);
+        }
+        // Mettre à jour l'aperçu immédiatement
+        var prev = document.getElementById('prev-photo-profil');
+        if (prev) { prev.src = b64; }
+        finalize(b64);
+      };
+      img.onerror = function() {
+        if (typeof toast === 'function') toast('Format image non supporte', 'error');
+        if (btn) { btn.textContent = 'Enregistrer mon profil public'; btn.disabled = false; }
+      };
+      img.src = evt.target.result;
+    };
+    reader.onerror = function() {
+      if (typeof toast === 'function') toast('Impossible de lire le fichier', 'error');
+      if (btn) { btn.textContent = 'Enregistrer mon profil public'; btn.disabled = false; }
+    };
+    reader.readAsDataURL(file);
+  } else {
+    // Pas de nouvelle photo → garder l'existante
+    finalize(null);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ONGLET MES SERVICES
+// ══════════════════════════════════════════════════════════════
+
+var _GM_MODULES = [
+  { id:'coiffure',          label:'Salon de Coiffure — Services',   section:'coiffure',    key:'services',      btnTxt:'Ajouter un service' },
+  { id:'automobile',        label:'Garage — Services mecanicien',   section:'automobile',  key:'services',      btnTxt:'Ajouter un service' },
+  { id:'automobile_pieces', label:'Garage — Pieces et accessoires', section:'automobile',  key:'pieces',        btnTxt:'Ajouter une piece' },
+  { id:'pressing',          label:'Pressing — Tarifs',              section:'pressing',    key:'tarifs',        btnTxt:'Ajouter un tarif' },
+  { id:'pressing_depot',    label:'Pressing — Points de depot',     section:'pressing',    key:'depots',        btnTxt:'Ajouter un depot' },
+  { id:'energie',           label:'Energie Solaire — Produits',     section:'energie',     key:'produits',      btnTxt:'Ajouter un produit' },
+  { id:'sante_medecin',     label:'Sante — Medecins',               section:'sante',       key:'medecins',      btnTxt:'Ajouter un medecin' },
+  { id:'sante_pharmacie',   label:'Sante — Pharmacie en ligne',     section:'sante',       key:'pharmacie',     btnTxt:'Ajouter un produit' },
+  { id:'btp_materiau',      label:'BTP — Materiaux de construction',section:'btp',         key:'produits',      btnTxt:'Ajouter un materiau' },
+  { id:'btp_artisan',       label:'BTP — Artisans partenaires',     section:'btp',         key:'artisans',      btnTxt:'Ajouter un artisan' },
+  { id:'agriculture',       label:'Agriculture — Catalogue',        section:'agriculture', key:'produits',      btnTxt:'Ajouter un produit' },
+  { id:'immobilier_bien',   label:'Immobilier — Annonces',          section:'immobilier',  key:'biens',         btnTxt:'Ajouter un bien' },
+  { id:'immobilier_agent',  label:'Immobilier — Agents',            section:'immobilier',  key:'agents',        btnTxt:'Ajouter un agent' },
+  { id:'logistique_tarif',  label:'Logistique — Tarifs colis',      section:'logistique',  key:'tarifs',        btnTxt:'Ajouter un tarif' },
+  { id:'restauration',      label:'Restauration — Restaurants',     section:'restauration',key:'restaurants',   btnTxt:'Ajouter un restaurant' },
+  { id:'menuiserie',        label:'Menuiserie — Realisations',      section:'menuiserie',  key:'realisations',  btnTxt:'Ajouter une realisation' },
+  { id:'education_cours',   label:'Education — Cours particuliers', section:'education',   key:'cours',         btnTxt:'Ajouter un cours' },
+  { id:'education_fournitures', label:'Education — Fournitures scolaires', section:'education', key:'fournitures',   btnTxt:'Ajouter une fourniture' },
+  { id:'education_livres',  label:'Education — Librairie',          section:'education',   key:'livres',        btnTxt:'Ajouter un livre' },
+  { id:'logistique_vehicule',label:'Logistique — Vehicules disponibles', section:'logistique', key:'vehicules',   btnTxt:'Ajouter un vehicule' },
+  { id:'restauration_menu', label:'Restauration — Menus & Plats',   section:'restauration',key:'menus',         btnTxt:'Ajouter un menu' },
+  { id:'coiffure_galerie',  label:'Coiffure — Galerie de realisations', section:'coiffure', key:'galerie',       btnTxt:'Ajouter une photo' },
+];
+
+function renderGmServices() {
+  var z = document.getElementById('gm-section-services');
+  if (!z) return;
+
+  var html = '<div style="background:#f0faf5;border:1.5px solid #007A3D;border-radius:10px;padding:12px;margin-bottom:14px;font-size:13px;color:#333">'
+    + '<strong style="color:#007A3D">Comment ca fonctionne :</strong> '
+    + 'Ajoutez vos vraies informations. Elles remplacent immediatement les donnees fictives dans la Marketplace pour vos clients.'
+    + '</div>';
+
+  _GM_MODULES.forEach(function(m) {
+    var items = mktDataGet(m.section)[m.key] || [];
+    html += '<div class="cd" style="margin-bottom:12px">';
+    html += '<div class="ch">';
+    html += '<div class="ct">' + m.label;
+    html += ' <span style="background:#007A3D;color:#fff;font-size:11px;padding:2px 8px;border-radius:20px;margin-left:6px">' + items.length + '</span>';
+    html += '</div>';
+    html += '<button onclick="ouvrirFormulaireAjout(\'' + m.id + '\')" class="btn bp bsm">' + m.btnTxt + '</button>';
+    html += '</div>';
+    html += '<div id="gm-list-' + m.id + '" style="padding:8px 16px 12px">';
+    html += _renderMiniListe(items, m.section, m.key);
+    html += '</div>';
+    html += '</div>';
+  });
+
+  z.innerHTML = html;
+}
+
+function _renderMiniListe(items, section, key) {
+  if (!items || items.length === 0) {
+    return '<div style="text-align:center;color:#999;font-size:13px;padding:12px">Aucun element — cliquez sur le bouton pour ajouter</div>';
+  }
+  var html = '<div style="display:flex;flex-direction:column;gap:6px">';
+  items.forEach(function(item) {
+    var imgSrc  = item.img_base64 || item.img || item.photo_base64 || '';
+    var nom     = item.nom || item.titre || item.trajet || item.matiere || '(sans nom)';
+    var sousTxt = '';
+    if (item.prix)       sousTxt += item.prix.toLocaleString('fr-FR') + ' FCFA';
+    if (item.tel)        sousTxt += (sousTxt ? ' · ' : '') + item.tel;
+    if (item.prix_piece) sousTxt += (sousTxt ? ' · ' : '') + item.prix_piece.toLocaleString('fr-FR') + ' F/pce';
+    if (item.adresse)    sousTxt += (sousTxt ? ' · ' : '') + item.adresse.split(',')[0];
+
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:#f9fafb;border-radius:8px;border:1px solid #f0f0f0">';
+    if (imgSrc) {
+      html += '<img loading="lazy" src="' + imgSrc + '" style="width:44px;height:44px;border-radius:6px;object-fit:cover;flex-shrink:0">';
+    } else {
+      html += '<div style="width:44px;height:44px;border-radius:6px;background:#e5e7eb;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;color:#9ca3af">+</div>';
+    }
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + _escHtml(nom) + '</div>';
+    if (sousTxt) html += '<div style="font-size:11px;color:#666">' + _escHtml(sousTxt) + '</div>';
+    html += '</div>';
+    html += '<button onclick="supprimerItemMarketplace(\'' + section + '\',\'' + key + '\',\'' + item.id + '\')" '
+      + 'style="background:#fee2e2;color:#CE1126;border:none;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0">Suppr.</button>';
+    html += '</div>';
+  });
+  html += '</div>';
+  return html;
+}
+
+function supprimerItemMarketplace(section, key, itemId) {
+  if (!confirm('Supprimer cet element de la Marketplace ?')) return;
+  var sec = mktDataGet(section) || {};
+  if (!sec[key]) return;
+  sec[key] = sec[key].filter(function(i) { return i.id !== itemId; });
+  mktDataSet(section, sec);
+  renderGmServices();
+  if (typeof toast === 'function') toast('Element supprime', 'success');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  FORMULAIRE D'AJOUT UNIVERSEL
+// ══════════════════════════════════════════════════════════════
+
+var _GM_FIELDS = {
+  coiffure: [
+    { id:'f-nom',      label:'Nom du service *',                    type:'text',   placeholder:'Ex: Tresses collees' },
+    { id:'f-cat',      label:'Categorie *',                         type:'select', options:['Tressage','Tissage','Defrisage','Couleur','Soin','Coupe','Locks','Ongles','Forfait','Abonnement'] },
+    { id:'f-genre',    label:'Pour',                                type:'select', options:['femme','homme','tous'] },
+    { id:'f-prix',     label:'Prix (FCFA) *',                       type:'number', placeholder:'3500' },
+    { id:'f-duree',    label:'Duree (minutes)',                      type:'number', placeholder:'120' },
+    { id:'f-tel',      label:'Telephone contact',                   type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-desc',     label:'Description',                         type:'text',   placeholder:'Decrivez le service...' },
+    { id:'f-img',      label:'Photo du service',                    type:'image'  },
+    { id:'f-video',    label:'Video du service (URL YouTube)',       type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  automobile: [
+    { id:'f-nom',      label:'Nom du service *',                    type:'text',   placeholder:'Ex: Vidange moteur' },
+    { id:'f-cat',      label:'Categorie *',                         type:'select', options:['Entretien','Freinage','Moteur','Diagnostic','Lavage','Pneus','Electrique','Carrosserie'] },
+    { id:'f-prix',     label:'Prix (FCFA) *',                       type:'number', placeholder:'15000' },
+    { id:'f-duree',    label:'Duree estimee (min)',                  type:'number', placeholder:'60' },
+    { id:'f-tel',      label:'Telephone garage *',                  type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-desc',     label:'Description',                         type:'text',   placeholder:'Details du service...' },
+    { id:'f-img',      label:'Photo',                               type:'image'  },
+    { id:'f-video',    label:'Video (URL YouTube)',                  type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  automobile_pieces: [
+    { id:'f-nom',      label:'Nom de la piece *',                   type:'text',   placeholder:'Ex: Filtre a huile' },
+    { id:'f-cat',      label:'Categorie *',                         type:'select', options:['Filtres','Lubrifiants','Freinage','Allumage','Electrique','Suspension','Pneus','Accessoires'] },
+    { id:'f-prix',     label:'Prix (FCFA) *',                       type:'number', placeholder:'5000' },
+    { id:'f-stock',    label:'Stock disponible',                    type:'number', placeholder:'20' },
+    { id:'f-tel',      label:'Telephone',                           type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-desc',     label:'Reference / Marque',                  type:'text',   placeholder:'Ex: NGK, Bosch...' },
+    { id:'f-img',      label:'Photo de la piece',                   type:'image'  },
+    { id:'f-video',    label:'Video (URL YouTube)',                  type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  pressing: [
+    { id:'f-nom',      label:'Article *',                           type:'text',   placeholder:'Ex: Chemise homme' },
+    { id:'f-cat',      label:'Categorie',                           type:'select', options:['Habillement','Linge maison','Nettoyage sec','Teinture'] },
+    { id:'f-prix',     label:'Prix par piece (FCFA)',               type:'number', placeholder:'500' },
+    { id:'f-prix2',    label:'Prix par kilo (FCFA)',                type:'number', placeholder:'0' },
+    { id:'f-tel',      label:'Telephone',                           type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-img',      label:'Photo',                               type:'image'  },
+    { id:'f-video',    label:'Video (URL YouTube)',                  type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  pressing_depot: [
+    { id:'f-nom',      label:'Nom du depot *',                      type:'text',   placeholder:'Ex: Depot Akwa' },
+    { id:'f-adresse',  label:'Adresse complete *',                  type:'text',   placeholder:'Quartier, ville...' },
+    { id:'f-tel',      label:'Telephone *',                         type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-horaires', label:'Horaires',                            type:'text',   placeholder:'Ex: 07h-20h' },
+    { id:'f-livraison',label:'Livraison disponible',               type:'select', options:['Oui','Non'] },
+    { id:'f-delai',    label:'Delai de traitement',                 type:'text',   placeholder:'Ex: 48h' },
+    { id:'f-img',      label:'Photo du depot',                      type:'image'  },
+    { id:'f-video',    label:'Video (URL YouTube)',                  type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  energie: [
+    { id:'f-nom',      label:'Nom du produit *',                    type:'text',   placeholder:'Ex: Panneau 200W' },
+    { id:'f-cat',      label:'Categorie',                           type:'select', options:['Solaire','Kit','Batterie','Onduleur','Groupe','Accessoire','LED'] },
+    { id:'f-prix',     label:'Prix (FCFA) *',                       type:'number', placeholder:'120000' },
+    { id:'f-stock',    label:'Stock',                               type:'number', placeholder:'10' },
+    { id:'f-tel',      label:'Telephone contact',                   type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-desc',     label:'Description technique',               type:'text',   placeholder:'Puissance, caracteristiques...' },
+    { id:'f-img',      label:'Photo du produit',                    type:'image'  },
+    { id:'f-video',    label:'Video (URL YouTube)',                  type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  sante_medecin: [
+    { id:'f-nom',      label:'Nom du medecin *',                    type:'text',   placeholder:'Dr. NOM Prenom' },
+    { id:'f-spec',     label:'Specialite *',                        type:'select', options:['Medecine generale','Pediatrie','Gynecologie','Cardiologie','Ophtalmologie','Dermatologie','Orthopedie','ORL','Dentiste','Psychiatrie'] },
+    { id:'f-tel',      label:'Telephone *',                         type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-prix',     label:'Tarif consultation (FCFA)',           type:'number', placeholder:'5000' },
+    { id:'f-horaires', label:'Horaires',                            type:'text',   placeholder:'Lun-Ven 08h-17h' },
+    { id:'f-adresse',  label:'Adresse cabinet',                     type:'text',   placeholder:'Quartier, ville' },
+    { id:'f-teleconsult',label:'Teleconsultation',                 type:'select', options:['Oui','Non'] },
+    { id:'f-img',      label:'Photo du medecin',                    type:'image'  },
+    { id:'f-video',    label:'Video (URL YouTube)',                  type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  sante_pharmacie: [
+    { id:'f-nom',      label:'Nom du produit *',                    type:'text',   placeholder:'Ex: Paracetamol 500mg' },
+    { id:'f-cat',      label:'Categorie',                           type:'select', options:['Medicaments','Antibiotiques','Antipaludeens','Materiel','Protection','Complements','Hygiene','Diagnostic'] },
+    { id:'f-prix',     label:'Prix (FCFA) *',                       type:'number', placeholder:'500' },
+    { id:'f-stock',    label:'Stock',                               type:'number', placeholder:'100' },
+    { id:'f-ordonnance',label:'Sur ordonnance',                    type:'select', options:['Non','Oui'] },
+    { id:'f-tel',      label:'Telephone pharmacie',                 type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-img',      label:'Photo du produit',                    type:'image'  },
+    { id:'f-video',    label:'Video (URL YouTube)',                  type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  btp_materiau: [
+    { id:'f-nom',      label:'Nom du materiau *',                   type:'text',   placeholder:'Ex: Ciment CPA 50kg' },
+    { id:'f-cat',      label:'Categorie',                           type:'select', options:['Gros oeuvre','Ferraillage','Maconnerie','Carrelage','Peinture','Toiture','Plomberie','Electricite'] },
+    { id:'f-prix',     label:'Prix unitaire (FCFA) *',             type:'number', placeholder:'6500' },
+    { id:'f-stock',    label:'Stock disponible',                    type:'number', placeholder:'200' },
+    { id:'f-unite',    label:'Unite de vente',                      type:'text',   placeholder:'sac / m2 / barre...' },
+    { id:'f-tel',      label:'Telephone',                           type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-img',      label:'Photo',                               type:'image'  },
+    { id:'f-video',    label:'Video (URL YouTube)',                  type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  btp_artisan: [
+    { id:'f-nom',      label:'Nom / Entreprise *',                  type:'text',   placeholder:'Ex: MBAYE Construction' },
+    { id:'f-metier',   label:'Metier *',                            type:'select', options:['Macon','Carreleur','Peintre','Plombier','Electricien','Menuisier','Charpentier','Couvreur'] },
+    { id:'f-tel',      label:'Telephone *',                         type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-ville',    label:'Ville',                               type:'select', options:['Douala','Yaounde','Bafoussam','Garoua','Kribi','Limbe'] },
+    { id:'f-tarif',    label:'Tarif indicatif',                     type:'text',   placeholder:'Ex: Sur devis / 5000 F/m2' },
+    { id:'f-desc',     label:'Specialite',                          type:'text',   placeholder:'Ex: Maconnerie, fondations' },
+    { id:'f-img',      label:'Photo',                               type:'image'  },
+    { id:'f-video',    label:'Video (URL YouTube)',                  type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  agriculture: [
+    { id:'f-nom',      label:'Nom du produit *',                    type:'text',   placeholder:'Ex: Semences mais 5kg' },
+    { id:'f-cat',      label:'Categorie',                           type:'select', options:['Semences','Engrais','Pesticides','Outillage','Elevage','Animaux','Protection','Analyse'] },
+    { id:'f-prix',     label:'Prix (FCFA) *',                       type:'number', placeholder:'8500' },
+    { id:'f-stock',    label:'Stock',                               type:'number', placeholder:'50' },
+    { id:'f-unite',    label:'Unite',                               type:'text',   placeholder:'sac / sachet / piece...' },
+    { id:'f-tel',      label:'Telephone',                           type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-desc',     label:'Description',                         type:'text',   placeholder:'Caracteristiques...' },
+    { id:'f-img',      label:'Photo du produit',                    type:'image'  },
+    { id:'f-video',    label:'Video (URL YouTube)',                  type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  immobilier_bien: [
+    { id:'f-nom',      label:'Titre de l annonce *',               type:'text',   placeholder:'Ex: Appart F3 meuble Akwa' },
+    { id:'f-typebien', label:'Type de bien',                        type:'select', options:['Appartement','Maison','Villa','Bureau','Terrain','Hotel'] },
+    { id:'f-type',     label:'Transaction',                         type:'select', options:['Location','Vente','Hotel'] },
+    { id:'f-prix',     label:'Prix (FCFA) *',                       type:'number', placeholder:'150000' },
+    { id:'f-periode',  label:'Periode',                             type:'select', options:['mois','nuit',''] },
+    { id:'f-superficie',label:'Superficie (m2)',                    type:'number', placeholder:'80' },
+    { id:'f-chambres', label:'Chambres',                            type:'number', placeholder:'2' },
+    { id:'f-adresse',  label:'Quartier / Ville *',                  type:'text',   placeholder:'Quartier Akwa, Douala' },
+    { id:'f-tel',      label:'Telephone contact *',                 type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-desc',     label:'Description',                         type:'text',   placeholder:'Equipements, avantages...' },
+    { id:'f-img',      label:'Photo principale',                    type:'image'  },
+    { id:'f-video',    label:'Video (URL YouTube ou visite virtuelle)', type:'video', placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  immobilier_agent: [
+    { id:'f-nom',      label:'Nom complet *',                       type:'text',   placeholder:'Ex: Jean-Pierre MBARGA' },
+    { id:'f-tel',      label:'Telephone *',                         type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-email',    label:'Email',                               type:'text',   placeholder:'agent@immo.cm' },
+    { id:'f-ville',    label:'Ville principale',                    type:'select', options:['Douala','Yaounde','Bafoussam','Garoua','Kribi'] },
+    { id:'f-desc',     label:'Specialite',                          type:'text',   placeholder:'Ex: Location & Vente Douala' },
+    { id:'f-commission',label:'Commission (%)',                     type:'number', placeholder:'5' },
+    { id:'f-img',      label:'Photo de profil',                     type:'image'  },
+    { id:'f-video',    label:'Video de presentation (URL YouTube)', type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  logistique_tarif: [
+    { id:'f-nom',      label:'Trajet *',                            type:'text',   placeholder:'Ex: Douala - Yaounde' },
+    { id:'f-prix',     label:'Prix par kg (FCFA) *',               type:'number', placeholder:'500' },
+    { id:'f-prix2',    label:'Tarif minimum (FCFA)',               type:'number', placeholder:'2500' },
+    { id:'f-delai',    label:'Delai de livraison',                  type:'text',   placeholder:'Ex: 4-6h' },
+    { id:'f-distance', label:'Distance (km)',                       type:'text',   placeholder:'250 km' },
+    { id:'f-tel',      label:'Telephone *',                         type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-img',      label:'Photo',                               type:'image'  },
+    { id:'f-video',    label:'Video (URL YouTube)',                  type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  restauration: [
+    { id:'f-nom',      label:'Nom du restaurant *',                 type:'text',   placeholder:'Ex: Maquis Chez Mama' },
+    { id:'f-cat',      label:'Type',                                type:'select', options:['Maquis','Fast Food','Restaurant','Boulangerie','Snack','Bar'] },
+    { id:'f-tel',      label:'Telephone *',                         type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-adresse',  label:'Quartier / Ville',                    type:'text',   placeholder:'Bepanda, Douala' },
+    { id:'f-horaires', label:'Horaires',                            type:'text',   placeholder:'07h-23h' },
+    { id:'f-desc',     label:'Specialites',                         type:'text',   placeholder:'Ndole, Poulet DG...' },
+    { id:'f-livraison',label:'Livraison',                          type:'select', options:['Oui','Non'] },
+    { id:'f-img',      label:'Photo du restaurant',                 type:'image'  },
+    { id:'f-video',    label:'Video du restaurant (URL YouTube)',   type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  menuiserie: [
+    { id:'f-nom',      label:'Titre de la realisation *',           type:'text',   placeholder:'Ex: Lit 2 places sculpte' },
+    { id:'f-cat',      label:'Categorie',                           type:'select', options:['Chambres','Salons','Cuisines','Bureaux','Portes','Salles a manger','Dressing'] },
+    { id:'f-matiere',  label:'Matiere principale',                  type:'select', options:['Frake','Sapelli','Acajou','Iroko','Wenge','MDF','Pin'] },
+    { id:'f-prix',     label:'Prix indicatif (FCFA)',               type:'number', placeholder:'180000' },
+    { id:'f-duree',    label:'Delai de fabrication',                type:'text',   placeholder:'Ex: 7-10 jours' },
+    { id:'f-tel',      label:'Telephone contact *',                 type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-desc',     label:'Description',                         type:'text',   placeholder:'Dimensions, finitions...' },
+    { id:'f-img',      label:'Photo de la realisation',             type:'image'  },
+    { id:'f-video',    label:'Video de la realisation (URL YouTube)', type:'video', placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  education_cours: [
+    { id:'f-nom',      label:'Matiere *',                           type:'text',   placeholder:'Ex: Mathematiques' },
+    { id:'f-enseignant',label:'Nom du professeur',                  type:'text',   placeholder:'Prof. NOM Prenom' },
+    { id:'f-tel',      label:'Telephone *',                         type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-prix',     label:'Tarif par heure (FCFA)',              type:'number', placeholder:'3000' },
+    { id:'f-niveaux',  label:'Niveaux couverts',                    type:'text',   placeholder:'Ex: 6e - Terminale' },
+    { id:'f-modes',    label:'Modes (separer par virgule)',         type:'text',   placeholder:'Domicile, En ligne' },
+    { id:'f-desc',     label:'Description',                         type:'text',   placeholder:'Methode, points abordes...' },
+    { id:'f-img',      label:'Photo',                               type:'image'  },
+    { id:'f-video',    label:'Video de cours (URL YouTube)',        type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  education_fournitures: [
+    { id:'f-nom',      label:'Nom de la fourniture *',              type:'text',   placeholder:'Ex: Cahier 200 pages Seyes' },
+    { id:'f-cat',      label:'Categorie',                           type:'select', options:['Papeterie','Materiel','Uniformes','Imprimerie','Livres'] },
+    { id:'f-prix',     label:'Prix (FCFA) *',                       type:'number', placeholder:'900' },
+    { id:'f-stock',    label:'Stock disponible',                    type:'number', placeholder:'200' },
+    { id:'f-desc',     label:'Description',                         type:'text',   placeholder:'Caracteristiques du produit...' },
+    { id:'f-tel',      label:'Telephone contact',                   type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-img',      label:'Photo du produit',                    type:'image'  },
+    { id:'f-video',    label:'Video (URL YouTube)',                  type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  education_livres: [
+    { id:'f-nom',      label:'Titre du livre *',                    type:'text',   placeholder:'Ex: Mathematiques Terminale C/D' },
+    { id:'f-auteur',   label:'Auteur / Editeur',                    type:'text',   placeholder:'Ex: MEN Cameroun, Larousse...' },
+    { id:'f-cat',      label:'Categorie',                           type:'select', options:['Scolaire','Roman','Developpement','BD/Jeunesse','Professionnel'] },
+    { id:'f-niveau',   label:'Niveau',                              type:'select', options:['Primaire','College','Lycee','Universite','Tous niveaux'] },
+    { id:'f-prix',     label:'Prix (FCFA) *',                       type:'number', placeholder:'5500' },
+    { id:'f-stock',    label:'Stock',                               type:'number', placeholder:'30' },
+    { id:'f-desc',     label:'Description',                         type:'text',   placeholder:'Contenu, programme...' },
+    { id:'f-tel',      label:'Telephone contact',                   type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-img',      label:'Photo de couverture',                 type:'image'  },
+    { id:'f-video',    label:'Video de presentation (URL YouTube)', type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  logistique_vehicule: [
+    { id:'f-nom',      label:'Nom du vehicule *',                   type:'text',   placeholder:'Ex: Fourgon 8m3' },
+    { id:'f-type',     label:'Type de vehicule',                    type:'select', options:['Moto','Tricycle','Pick-up','Fourgon','Camion','Frigo','Minibus'] },
+    { id:'f-capacite', label:'Capacite (ex: 1500kg / 8m3)',         type:'text',   placeholder:'Ex: 1500 kg / 8 m3' },
+    { id:'f-prix',     label:'Prix par heure (FCFA)',               type:'number', placeholder:'8000' },
+    { id:'f-prix2',    label:'Prix par jour (FCFA)',                type:'number', placeholder:'40000' },
+    { id:'f-zones',    label:'Zones desservies',                    type:'text',   placeholder:'Ex: Douala, Yaounde, National' },
+    { id:'f-tel',      label:'Telephone contact *',                 type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-desc',     label:'Description',                         type:'text',   placeholder:'Caracteristiques, usage...' },
+    { id:'f-img',      label:'Photo du vehicule',                   type:'image'  },
+    { id:'f-video',    label:'Video (URL YouTube)',                  type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  restauration_menu: [
+    { id:'f-nom',      label:'Nom du plat / menu *',                type:'text',   placeholder:'Ex: Ndole complet' },
+    { id:'f-cat',      label:'Categorie',                           type:'select', options:['Plats','Entrees','Desserts','Boissons','Grillades','Petit-dejeuner','Menu du jour'] },
+    { id:'f-resto',    label:'Nom du restaurant',                   type:'text',   placeholder:'Ex: Maquis Chez Mama' },
+    { id:'f-prix',     label:'Prix (FCFA) *',                       type:'number', placeholder:'2500' },
+    { id:'f-temps',    label:'Temps de preparation (min)',          type:'number', placeholder:'20' },
+    { id:'f-tel',      label:'Telephone du restaurant *',           type:'tel',    placeholder:'+237 6XX XX XX XX' },
+    { id:'f-desc',     label:'Description du plat',                 type:'text',   placeholder:'Ingredients, accompagnements...' },
+    { id:'f-img',      label:'Photo du plat',                       type:'image'  },
+    { id:'f-video',    label:'Video de preparation (URL YouTube)',  type:'video',  placeholder:'https://youtube.com/watch?v=...' },
+  ],
+  coiffure_galerie: [
+    { id:'f-nom',      label:'Titre de la realisation *',           type:'text',   placeholder:'Ex: Tresses collees avec perles' },
+    { id:'f-cat',      label:'Style',                               type:'select', options:['Tressage','Tissage','Locks','Coupe','Couleur','Soin','Ongles','Mariage'] },
+    { id:'f-genre',    label:'Pour',                                type:'select', options:['femme','homme','tous'] },
+    { id:'f-desc',     label:'Description',                         type:'text',   placeholder:'Technique utilisee, duree...' },
+    { id:'f-img',      label:'Photo de la realisation *',           type:'image'  },
+    { id:'f-video',    label:'Video tuto / avant-apres (URL YouTube)', type:'video', placeholder:'https://youtube.com/watch?v=...' },
+  ],
+};
+
+function ouvrirFormulaireAjout(moduleId) {
+  var fields = _GM_FIELDS[moduleId];
+  if (!fields) { if (typeof toast === 'function') toast('Module inconnu', 'error'); return; }
+  _gmModuleActif = moduleId;
+
+  var mod = _GM_MODULES.find(function(m){ return m.id === moduleId; });
+  document.getElementById('mkt-data-titre').textContent = mod ? mod.label : 'Ajouter';
+
+  var html = '';
+  fields.forEach(function(f) {
+    html += '<div style="margin-bottom:12px">';
+    html += '<label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;color:#374151">' + f.label + '</label>';
+    if (f.type === 'select') {
+      html += '<select id="' + f.id + '" style="width:100%;padding:9px;border:1.5px solid var(--br);border-radius:8px;font-size:13px">';
+      (f.options || []).forEach(function(o) {
+        html += '<option value="' + o + '">' + o + '</option>';
+      });
+      html += '</select>';
+    } else if (f.type === 'image') {
+      html += '<div style="display:flex;gap:12px;align-items:center">';
+      html += '<img loading="lazy" id="prev-f-img" src="" style="width:60px;height:60px;border-radius:8px;object-fit:cover;border:1.5px solid var(--br);display:none">';
+      html += '<label style="background:#f0faf5;color:#007A3D;border:1.5px solid #007A3D;padding:8px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">';
+      html += 'Choisir une image';
+      html += '<input type="file" id="f-img" accept="image/*" style="display:none" onchange="previewImage(\'f-img\',\'prev-f-img\')">';
+      html += '</label>';
+      html += '<span style="font-size:11px;color:#999">JPG / PNG recommande</span>';
+      html += '</div>';
+    } else if (f.type === 'video') {
+      html += '<input type="text" id="f-video" placeholder="' + (f.placeholder || 'https://youtube.com/watch?v=...') + '" style="' + _S_INP + '">';
+      html += '<div style="font-size:11px;color:#666;margin-top:5px">Lien YouTube, Vimeo ou MP4 direct — la video sera visible par les clients.</div>';
+    } else {
+      html += '<input type="' + f.type + '" id="' + f.id + '" placeholder="' + (f.placeholder || '') + '"';
+      html += ' style="width:100%;padding:9px;border:1.5px solid var(--br);border-radius:8px;font-size:13px;box-sizing:border-box">';
+    }
+    html += '</div>';
+  });
+
+  document.getElementById('mkt-data-form').innerHTML = html;
+  if (typeof openM === 'function') openM('m-mkt-data-ajout');
+}
+
+function sauvegarderItemMarketplace() {
+  var moduleId = _gmModuleActif;
+  var fields   = _GM_FIELDS[moduleId];
+  var mod      = _GM_MODULES.find(function(m){ return m.id === moduleId; });
+  if (!fields || !mod) return;
+
+  // Validation champs requis
+  var missing = [];
+  fields.filter(function(f){ return f.label.indexOf('*') >= 0 && f.type !== 'image'; }).forEach(function(f) {
+    var el = document.getElementById(f.id);
+    if (!el || !String(el.value).trim()) missing.push(f.label.replace(' *',''));
+  });
+  if (missing.length > 0) {
+    if (typeof toast === 'function') toast('Champs requis: ' + missing.join(', '), 'warning');
+    return;
+  }
+
+  // Construire l'item
+  var item = { id: moduleId + '_' + Date.now() };
+  fields.forEach(function(f) {
+    if (f.type === 'image') return;  // géré séparément via upload
+    // f.type === 'video' → traité comme text normal (URL)
+    var el  = document.getElementById(f.id);
+    var val = el ? el.value.trim() : '';
+    // Propriété de l'item
+    var prop = f.id.replace('f-','');
+    if (f.type === 'number') item[prop] = parseFloat(val) || 0;
+    else item[prop] = val;
+  });
+  // Alias pour certains champs
+  if (item.prix2 !== undefined) { item.prix_kilo = item.prix2; delete item.prix2; }
+  if (item.typebien !== undefined) { item.cat = item.typebien; delete item.typebien; }
+  if (item.teleconsult !== undefined) { item.teleconsult = item.teleconsult === 'Oui'; }
+  if (item.livraison !== undefined) { item.livraison = item.livraison === 'Oui'; }
+
+  function finalize(b64) {
+    if (b64) item.img_base64 = b64;
+    var section = mod.section;
+    var key     = mod.key;
+    var sec     = mktDataGet(section) || {};
+    if (!sec[key]) sec[key] = [];
+    sec[key].push(item);
+    var ok = mktDataSet(section, sec);
+    if (typeof closeM === 'function') closeM('m-mkt-data-ajout');
+    if (typeof toast === 'function') toast(ok ? 'Ajoute dans la Marketplace !' : 'Erreur de sauvegarde', ok ? 'success' : 'error');
+    if (ok) renderGmServices();
+  }
+
+  var inp = document.getElementById('f-img');
+  if (inp && inp.files && inp.files[0]) {
+    uploadImage('f-img', finalize, 600, 400, 0.75);
+  } else {
+    finalize(null);
+  }
+}

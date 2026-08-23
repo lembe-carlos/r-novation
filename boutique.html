@@ -1,0 +1,1862 @@
+<!DOCTYP
+  <button onclick="ouvrirSuiviCommande()" style="background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;padding:4px 8px;color:#666"><span style="font-size:20px">&#128230;</span><span style="font-size:9px;font-weight:600">Commandes</span></button>E html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>KAMER360 — Boutique en ligne</title>
+ <!-- PWA -->
+ <link rel="manifest" href="manifest.json">
+ <meta name="theme-color" content="#007A3D">
+ <meta name="mobile-web-app-capable" content="yes">
+ <meta name="apple-mobile-web-app-capable" content="yes">
+ <meta name="apple-mobile-web-app-status-bar-style" content="default">
+ <meta name="apple-mobile-web-app-title" content="KAMER360">
+ <link rel="apple-touch-icon" href="https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=180&h=180&fit=crop">
+<meta name="description" content="Achetez vos produits en ligne depuis les supermarchés du Cameroun. Livraison rapide à Yaoundé, Douala et partout au Cameroun.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="boutique.css">
+  <link rel="stylesheet" href="design-upgrade.css">
+<!-- Tailwind CSS — mode ajout uniquement (preflight désactivé) -->
+<script>
+  // Désactiver le reset Tailwind pour éviter les conflits avec boutique.css
+  window.tailwind = window.tailwind || {};
+  window.tailwind.config = {
+    corePlugins: { preflight: false },
+    prefix: 'tw-',
+    theme: {
+      extend: {
+        colors: {
+          kamer: {
+            green:  '#007A3D',
+            dark:   '#005C2E',
+            light:  '#d1fae5',
+            red:    '#CE1126',
+            yellow: '#FCD116',
+          }
+        },
+        borderRadius: {
+          'xl2': '1rem',
+          'xl3': '1.5rem',
+        },
+        keyframes: {
+          fadeIn: {
+            '0%':   { opacity: '0', transform: 'translateY(8px) scale(0.98)' },
+            '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+          }
+        }
+      }
+    }
+  };
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+/* ══ MARKETPLACE OVERLAY ══ */
+#marketplace-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 2000;
+  justify-content: flex-end;
+  animation: fadeIn .2s ease;
+}
+#marketplace-overlay.active { display: flex; }
+#marketplace-panel {
+  width: 100%;
+  max-width: 960px;
+  background: #f8fafc;
+  height: 100vh;
+  overflow-y: auto;
+  box-shadow: -4px 0 40px rgba(0,0,0,.2);
+  display: flex;
+  flex-direction: column;
+  animation: slideInRight .3s ease;
+}
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.mkt-header {
+  background: linear-gradient(135deg, #007A3D 0%, #005a2d 100%);
+  color: #fff;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.mkt-header h2 { font-size: 18px; font-weight: 800; margin: 0; }
+.mkt-header p  { font-size: 12px; opacity: .8; margin: 2px 0 0; }
+.mkt-close {
+  margin-left: auto;
+  background: rgba(255,255,255,.2);
+  border: none;
+  color: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .2s;
+}
+.mkt-close:hover { background: rgba(255,255,255,.35); }
+.mkt-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 14px 16px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.mkt-tabs::-webkit-scrollbar { display: none; }
+.mkt-tab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 16px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: #555;
+  white-space: nowrap;
+  transition: all .2s;
+  flex-shrink: 0;
+}
+.mkt-tab-btn:hover { border-color: #007A3D; color: #007A3D; }
+.mkt-tab-btn.active { background: #007A3D; color: #fff; border-color: #007A3D; }
+.mkt-tab-btn span { font-size: 22px; }
+.mkt-section { display: none; padding: 16px; }
+.mkt-section.active { display: block; }
+.mkt-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mkt-section-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #1a1a1a;
+}
+.mkt-filter {
+  padding: 8px 12px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+}
+/* Modal devis */
+#mkt-modal-devis, #mkt-menu-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 3000;
+  justify-content: center;
+  align-items: flex-end;
+}
+#mkt-modal-devis.active, #mkt-menu-modal.active {
+  display: flex;
+}
+.mkt-modal-inner {
+  background: #fff;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 20px 20px 0 0;
+  padding: 20px;
+  animation: slideUp .3s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.mkt-modal-inner h3 {
+  font-size: 16px;
+  font-weight: 800;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #f0f0f0;
+  color: #007A3D;
+}
+.mkt-field { margin-bottom: 12px; }
+.mkt-field label { font-size: 12px; font-weight: 600; display: block; margin-bottom: 4px; color: #555; }
+.mkt-field input, .mkt-field textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 13px;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color .2s;
+}
+.mkt-field input:focus, .mkt-field textarea:focus { border-color: #007A3D; }
+.mkt-btn-submit {
+  width: 100%;
+  background: #007A3D;
+  color: #fff;
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background .2s;
+}
+.mkt-btn-submit:hover { background: #005a2d; }
+/* Modal menu restaurant */
+#mkt-menu-modal .mkt-modal-inner { max-width: 600px; }
+/* Responsive */
+@media (max-width: 600px) {
+  #marketplace-panel { max-width: 100%; }
+  .mkt-tabs { gap: 6px; padding: 10px 12px; }
+  .mkt-tab-btn { padding: 8px 12px; font-size: 11px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ════════ HEADER ════════ -->
+<header class="bh">
+ <div class="bh-inner">
+ <a class="blogo" href="boutique.html">
+ <div style="width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#007A3D,#00A852);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;color:#FCD116;letter-spacing:-1px;flex-shrink:0">K3</div>
+ <div>
+  <span style="font-family:'Playfair Display',serif;font-weight:900;font-size:17px;color:#0F1F0F">KAMER<span style="color:#007A3D">360</span></span>
+  <span class="blogo-sub" style="display:block;font-size:10px;color:#6B7B6B;letter-spacing:.5px">Tout le Cameroun dans votre poche</span>
+ </div>
+ </a>
+
+ <div class="bsearch tw-relative">
+ <input type="text" id="search-input" placeholder="Rechercher un produit..." oninput="filterSearch()">
+ <button onclick="filterSearch()">Chercher</button>
+ </div>
+
+ <div class="bh-actions" style="display:flex">
+ <button class="bcart-btn" onclick="openCart()" style="padding:8px 12px">
+ <img loading="lazy" src="https://img.icons8.com/ios/24/007A3D/shopping-cart.png" alt="panier" style="width:20px;height:20px;vertical-align:middle">
+ <span class="bcart-cnt" id="cart-cnt">0</span>
+ </button>
+ <button class="bcart-btn bh-desktop-only" onclick="ouvrirCompteClient()" id="btn-compte-client" style="background:#fff;color:#007A3D;border:2px solid #007A3D">
+ <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+ <span id="btn-compte-txt">Mon compte</span>
+ </button>
+ <button onclick="ouvrirMarketplace()" class="bh-desktop-only" style="display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,#007A3D,#009e50);color:#fff;border:none;padding:9px 16px;border-radius:22px;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 2px 10px rgba(0,122,61,.3);margin-right:8px">
+ <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+ Marketplace
+</button>
+<a href="index.html" class="bcart-btn" style="background:#007A3D;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:5px">
+ <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+ Espace gérant
+ </a>
+ </div>
+ </div>
+</header>
+
+<!-- ════════ HERO ════════ -->
+<div class="bhero tw-relative tw-overflow-hidden">
+ <div class="bhero-bg" style="background-image:url('https://images.pexels.com/photos/264636/pexels-photo-264636.jpeg?auto=compress&cs=tinysrgb&w=1400&h=600&fit=crop')"></div>
+ <div class="bhero-content">
+ <h1>Shopping, Services &amp; Solutions<br><span>partout au Cameroun</span></h1>
+ <p>Votre super-app — Commerce, Services, Immobilier, Santé et plus encore</p>
+ <div class="bhero-btns">
+ <button class="bhero-btn primary" onclick="document.getElementById('produits-section').scrollIntoView({behavior:'smooth'})">
+ Commander maintenant
+ </button>
+ <button class="bhero-btn sec" onclick="document.getElementById('info-livraison').scrollIntoView({behavior:'smooth'})">
+ Infos livraison
+ </button>
+ </div>
+ </div>
+</div>
+
+<!-- ════════ BANDEAU INFOS ════════ -->
+<div class="bband">
+ <div class="bband-item">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=40&h=40&fit=crop" alt="">
+ Livraison express 2-4h
+ </div>
+ <div class="bband-item">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=40&h=40&fit=crop" alt="">
+ Paiement Mobile Money
+ </div>
+ <div class="bband-item">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1542838132-92c53300491e?w=40&h=40&fit=crop" alt="">
+ +500 produits disponibles
+ </div>
+ <div class="bband-item">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=40&h=40&fit=crop" alt="">
+ Service client 7j/7
+ </div>
+</div>
+
+<!-- ════════ CONTENU PRINCIPAL ════════ -->
+<div class="bmain">
+
+ <!-- Bannière KAMER Ads (annonces sponsorisées) -->
+ <div id="kamer-ads-banner" style="display:none;margin-bottom:18px"></div>
+
+ <!-- Filtres catégories -->
+ <div class="bcats" id="bcats"></div>
+
+ <!-- Titre section produits -->
+ <div class="bsec-title" id="produits-section">
+ Nos produits disponibles
+ </div>
+
+ <!-- Grille produits -->
+ <!-- ── Filtres prix + compteur ── -->
+<div class="tw-transition-shadow tw-duration-200 hover:tw-shadow-sm" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px;padding:12px 16px;background:#f9fafb;border-radius:12px;border:1px solid #e5e7eb">
+  <span style="font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px">&#128176; Prix :</span>
+  <input id="filtre-prix-min" type="number" placeholder="Min" min="0" class="tw-transition-colors tw-duration-150" style="width:80px;padding:7px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none" onfocus="this.style.borderColor='#007A3D'" onblur="this.style.borderColor='#e5e7eb'">
+  <span style="color:#6b7280;font-size:13px">&#8212;</span>
+  <input id="filtre-prix-max" type="number" placeholder="Max" min="0" class="tw-transition-colors tw-duration-150" style="width:80px;padding:7px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;outline:none" onfocus="this.style.borderColor='#007A3D'" onblur="this.style.borderColor='#e5e7eb'">
+  <span style="font-size:11px;color:#6b7280">FCFA</span>
+  <button onclick="appliquerFiltrePrix()" class="tw-transition-all tw-duration-150 hover:tw-brightness-110 active:tw-scale-95" style="padding:7px 14px;background:#007A3D;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Appliquer</button>
+  <button onclick="reinitialiserFiltres()" class="tw-transition-all tw-duration-150 hover:tw-bg-gray-50 active:tw-scale-95" style="padding:7px 14px;background:#fff;color:#374151;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;cursor:pointer">&#128260; Tout afficher</button>
+  <button onclick="forceRechargerProduits()" class="tw-transition-all tw-duration-150 hover:tw-brightness-110 active:tw-scale-95" style="padding:7px 14px;background:#1e40af;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer">&#9654; Recharger</button>
+  <span style="margin-left:auto;font-size:12px;color:#6b7280" id="bprod-compteur"></span>
+</div>
+<div class="bpgrid tw-gap-4" id="bpgrid"></div>
+<div id="bprod-pagination"></div>
+
+
+ <!-- ══════════ NOS SERVICES ══════════ -->
+ <div id="services-section" style="margin-bottom:24px">
+ <div class="bsec-title" style="margin-bottom:20px">Nos Services</div>
+ <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">
+
+ <!-- Salon de Coiffure -->
+ <div style="background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--br);cursor:pointer" onclick="ouvrirReservationService('coiffure')">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400&h=200&fit=crop/400/180" style="width:100%;height:130px;object-fit:cover" alt="Coiffure">
+ <div style="padding:16px">
+ <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+ <span style="font-size:22px"></span>
+ <div style="font-weight:800;font-size:15px">Salon de Coiffure</div>
+ </div>
+ <div style="font-size:13px;color:var(--mu);margin-bottom:10px">Tresses, tissage, défrisage, coloration, coupe homme...</div>
+ <div style="display:flex;justify-content:space-between;align-items:center">
+ <span style="font-size:12px;color:#007A3D;font-weight:700">À partir de 1 500 FCFA</span>
+ <button style="background:#007A3D;color:#fff;border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">Réserver</button>
+ </div>
+ </div>
+ </div>
+
+ <!-- Pressing -->
+ <div style="background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--br);cursor:pointer" onclick="ouvrirReservationService('pressing')">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1545173168-9f1947eebb7f?w=400&h=200&fit=crop/400/180" style="width:100%;height:130px;object-fit:cover" alt="Pressing">
+ <div style="padding:16px">
+ <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+ <span style="font-size:22px"></span>
+ <div style="font-weight:800;font-size:15px">Pressing & Blanchisserie</div>
+ </div>
+ <div style="font-size:13px;color:var(--mu);margin-bottom:10px">Lavage, repassage, nettoyage à sec, livraison à domicile</div>
+ <div style="display:flex;justify-content:space-between;align-items:center">
+ <span style="font-size:12px;color:#007A3D;font-weight:700">À partir de 500 FCFA/pièce</span>
+ <button style="background:#007A3D;color:#fff;border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">Déposer</button>
+ </div>
+ </div>
+ </div>
+
+ <!-- Automobile -->
+ <div style="background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--br);cursor:pointer" onclick="ouvrirReservationService('auto')">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1487754180451-c456f719a1fc?w=400&h=200&fit=crop/400/180" style="width:100%;height:130px;object-fit:cover" alt="Automobile">
+ <div style="padding:16px">
+ <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+ <span style="font-size:22px"></span>
+ <div style="font-weight:800;font-size:15px">Automobile & Mécanique</div>
+ </div>
+ <div style="font-size:13px;color:var(--mu);margin-bottom:10px">Vidange, freins, diagnostic, pneus, lavage, pièces détachées</div>
+ <div style="display:flex;justify-content:space-between;align-items:center">
+ <span style="font-size:12px;color:#007A3D;font-weight:700">À partir de 3 000 FCFA</span>
+ <button style="background:#007A3D;color:#fff;border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">Prendre RDV</button>
+ </div>
+ </div>
+ </div>
+
+ <!-- Menuiserie -->
+ <div style="background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--br);cursor:pointer" onclick="ouvrirReservationService('menuiserie')">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=200&fit=crop/400/180" style="width:100%;height:130px;object-fit:cover" alt="Menuiserie">
+ <div style="padding:16px">
+ <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+ <span style="font-size:22px"></span>
+ <div style="font-weight:800;font-size:15px">Menuiserie & Bois</div>
+ </div>
+ <div style="font-size:13px;color:var(--mu);margin-bottom:10px">Planches, contreplaqué, vis, vernis, peinture, portes...</div>
+ <div style="display:flex;justify-content:space-between;align-items:center">
+ <span style="font-size:12px;color:#007A3D;font-weight:700">À partir de 1 200 FCFA</span>
+ <button style="background:#007A3D;color:#fff;border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">Commander</button>
+ </div>
+ </div>
+ </div>
+
+ <!-- Meubles & Décoration -->
+ <div style="background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--br);cursor:pointer" onclick="ouvrirReservationService('meubles')">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=400&h=200&fit=crop/400/180" style="width:100%;height:130px;object-fit:cover" alt="Meubles">
+ <div style="padding:16px">
+ <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+ <span style="font-size:22px"><img loading="lazy" src="https://img.icons8.com/ios/20/007A3D/sofa.png" alt="Meubles" style="width:22px;height:22px;vertical-align:middle"></span>
+ <div style="font-weight:800;font-size:15px">Meubles & Décoration</div>
+ </div>
+ <div style="font-size:13px;color:var(--mu);margin-bottom:10px">Lits, armoires, tables, tapis, rideaux, déco intérieure...</div>
+ <div style="display:flex;justify-content:space-between;align-items:center">
+ <span style="font-size:12px;color:#007A3D;font-weight:700">À partir de 3 500 FCFA</span>
+ <button style="background:#007A3D;color:#fff;border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">Voir catalogue</button>
+ </div>
+ </div>
+ </div>
+
+
+ <!-- Restauration -->
+ <div style="background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--br);cursor:pointer" onclick="ouvrirReservationService('restauration')">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=200&fit=crop/400/180" style="width:100%;height:130px;object-fit:cover" alt="Restauration">
+ <div style="padding:16px">
+ <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+ <span style="font-size:22px"><img loading="lazy" src="https://img.icons8.com/ios/20/007A3D/restaurant.png" alt="Restauration" style="width:22px;height:22px;vertical-align:middle"></span>
+ <div style="font-weight:800;font-size:15px">Restauration & Food</div>
+ </div>
+ <div style="font-size:13px;color:var(--mu);margin-bottom:10px">Maquis, fast-food, traiteurs — livraison à domicile</div>
+ <div style="display:flex;justify-content:space-between;align-items:center">
+ <span style="font-size:12px;color:#007A3D;font-weight:700">Livraison 30 min</span>
+ <button style="background:#007A3D;color:#fff;border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">Commander</button>
+ </div>
+ </div>
+ </div>
+
+ <!-- Énergie & Solaire -->
+ <div style="background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--br);cursor:pointer" onclick="ouvrirReservationService('energie')">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1509391366360-2e959784a276?w=400&h=200&fit=crop/400/180" style="width:100%;height:130px;object-fit:cover" alt="Énergie">
+ <div style="padding:16px">
+ <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+ <span style="font-size:22px"><img loading="lazy" src="https://img.icons8.com/ios/20/007A3D/lightning-bolt.png" alt="Energie" style="width:22px;height:22px;vertical-align:middle"></span>
+ <div style="font-weight:800;font-size:15px">Énergie & Solaire</div>
+ </div>
+ <div style="font-size:13px;color:var(--mu);margin-bottom:10px">Panneaux solaires, groupes électrogènes, onduleurs</div>
+ <div style="display:flex;justify-content:space-between;align-items:center">
+ <span style="font-size:12px;color:#007A3D;font-weight:700">Devis gratuit</span>
+ <button style="background:#007A3D;color:#fff;border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">Simuler</button>
+ </div>
+ </div>
+ </div>
+
+ <!-- Santé & Médical -->
+ <div style="background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--br);cursor:pointer" onclick="ouvrirReservationService('sante')">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=400&h=200&fit=crop/400/180" style="width:100%;height:130px;object-fit:cover" alt="Santé">
+ <div style="padding:16px">
+ <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+ <span style="font-size:22px"><img loading="lazy" src="https://img.icons8.com/ios/20/CE1126/hospital.png" alt="Sante" style="width:22px;height:22px;vertical-align:middle"></span>
+ <div style="font-weight:800;font-size:15px">Santé & Médical</div>
+ </div>
+ <div style="font-size:13px;color:var(--mu);margin-bottom:10px">RDV médecin, pharmacie, matériel médical, urgences</div>
+ <div style="display:flex;justify-content:space-between;align-items:center">
+ <span style="font-size:12px;color:#CE1126;font-weight:700"><img loading="lazy" src="https://img.icons8.com/ios/20/CE1126/siren.png" alt="Urgence" style="width:22px;height:22px;vertical-align:middle"> Urgences disponibles</span>
+ <button style="background:#CE1126;color:#fff;border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">RDV</button>
+ </div>
+ </div>
+ </div>
+
+ <!-- BTP & Construction -->
+ <div style="background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--br);cursor:pointer" onclick="ouvrirReservationService('btp')">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&h=200&fit=crop/400/180" style="width:100%;height:130px;object-fit:cover" alt="BTP">
+ <div style="padding:16px">
+ <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+ <span style="font-size:22px"><img loading="lazy" src="https://img.icons8.com/ios/20/007A3D/building-under-construction.png" alt="BTP" style="width:22px;height:22px;vertical-align:middle"></span>
+ <div style="font-weight:800;font-size:15px">BTP & Construction</div>
+ </div>
+ <div style="font-size:13px;color:var(--mu);margin-bottom:10px">Ciment, fer, carrelage, artisans, devis travaux</div>
+ <div style="display:flex;justify-content:space-between;align-items:center">
+ <span style="font-size:12px;color:#007A3D;font-weight:700">5 artisans partenaires</span>
+ <button style="background:#007A3D;color:#fff;border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">Devis</button>
+ </div>
+ </div>
+ </div>
+
+ <!-- Agriculture & Élevage -->
+ <div style="background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--br);cursor:pointer" onclick="ouvrirReservationService('agriculture')">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=400&h=200&fit=crop/400/180" style="width:100%;height:130px;object-fit:cover" alt="Agriculture">
+ <div style="padding:16px">
+ <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+ <span style="font-size:22px"><img loading="lazy" src="https://img.icons8.com/ios/20/007A3D/plant-under-sun.png" alt="Agriculture" style="width:22px;height:22px;vertical-align:middle"></span>
+ <div style="font-weight:800;font-size:15px">Agriculture & Élevage</div>
+ </div>
+ <div style="font-size:13px;color:var(--mu);margin-bottom:10px">Semences, engrais, outillage, animaux vivants</div>
+ <div style="display:flex;justify-content:space-between;align-items:center">
+ <span style="font-size:12px;color:#007A3D;font-weight:700">Livraison 48h</span>
+ <button style="background:#007A3D;color:#fff;border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">Commander</button>
+ </div>
+ </div>
+ </div>
+
+ </div>
+ </div>
+ <!-- Logistique -->
+ <div style="background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--br);cursor:pointer" onclick="ouvrirReservationService('logistique')">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=120&h=120&fit=crop/400/180" style="width:100%;height:130px;object-fit:cover" alt="Logistique">
+ <div style="padding:16px">
+ <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+ <span style="font-size:22px"><img loading="lazy" src="https://img.icons8.com/ios/20/007A3D/box.png" alt="Logistique" style="width:22px;height:22px;vertical-align:middle"></span>
+ <div style="font-weight:800;font-size:15px">Logistique & Livraison</div>
+ </div>
+ <div style="font-size:13px;color:var(--mu);margin-bottom:10px">Envoi colis inter-villes, location véhicules utilitaires</div>
+ <div style="display:flex;justify-content:space-between;align-items:center">
+ <span style="font-size:12px;color:#007A3D;font-weight:700">À partir de 1 000 FCFA</span>
+ <button style="background:#007A3D;color:#fff;border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">Expédier</button>
+ </div>
+ </div>
+ </div>
+
+ <!-- Éducation -->
+ <div style="background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--br);cursor:pointer" onclick="ouvrirReservationService('education')">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=120&h=120&fit=crop/400/180" style="width:100%;height:130px;object-fit:cover" alt="Éducation">
+ <div style="padding:16px">
+ <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+ <span style="font-size:22px"><img loading="lazy" src="https://img.icons8.com/ios/20/007A3D/book.png" alt="Education" style="width:22px;height:22px;vertical-align:middle"></span>
+ <div style="font-weight:800;font-size:15px">Éducation & Formation</div>
+ </div>
+ <div style="font-size:13px;color:var(--mu);margin-bottom:10px">Fournitures, livres scolaires, cours particuliers</div>
+ <div style="display:flex;justify-content:space-between;align-items:center">
+ <span style="font-size:12px;color:#007A3D;font-weight:700">Cours dès 2 500 F/h</span>
+ <button style="background:#007A3D;color:#fff;border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">Commander</button>
+ </div>
+ </div>
+ </div>
+
+ <!-- Immobilier -->
+ <div style="background:#fff;border-radius:16px;overflow:hidden;border:1px solid var(--br);cursor:pointer" onclick="ouvrirReservationService('immobilier')">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=400&h=240&fit=crop/400/180" style="width:100%;height:130px;object-fit:cover" alt="Immobilier">
+ <div style="padding:16px">
+ <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+ <span style="font-size:22px"><img loading="lazy" src="https://img.icons8.com/ios/20/007A3D/home.png" alt="Immobilier" style="width:22px;height:22px;vertical-align:middle"></span>
+ <div style="font-weight:800;font-size:15px">Immobilier & Hébergement</div>
+ </div>
+ <div style="font-size:13px;color:var(--mu);margin-bottom:10px">Location, vente, hôtels et résidences meublées</div>
+ <div style="display:flex;justify-content:space-between;align-items:center">
+ <span style="font-size:12px;color:#007A3D;font-weight:700">11 annonces actives</span>
+ <button style="background:#007A3D;color:#fff;border:none;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer">Voir annonces</button>
+ </div>
+ </div>
+ </div>
+
+ </div>
+ </div>
+
+ <!-- Modal réservation service depuis boutique -->
+ <div id="modal-service-boutique" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center;padding:20px;box-sizing:border-box">
+ <div style="background:#fff;border-radius:20px;padding:28px;max-width:420px;width:100%;max-height:90vh;overflow-y:auto">
+ <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+ <h3 id="modal-svc-titre" style="font-size:18px;font-weight:800;color:#111">Réserver un service</h3>
+ <button onclick="fermerModalService()" style="background:#f3f4f6;border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:16px"></button>
+ </div>
+ <div id="modal-svc-contenu"></div>
+ </div>
+ </div>
+
+ <!-- Section info livraison -->
+ <div id="info-livraison" style="background:#fff;border-radius:16px;padding:28px;border:1px solid var(--br);margin-bottom:24px">
+ <div class="bsec-title" style="margin-bottom:20px">Nos services de livraison</div>
+ <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px">
+ <div style="background:var(--bg);border-radius:12px;overflow:hidden">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=130&fit=crop" style="width:100%;height:110px;object-fit:cover" alt="">
+ <div style="padding:14px">
+ <div style="font-weight:700;font-size:14px;margin-bottom:5px">Express 2-4h</div>
+ <div style="font-size:12.5px;color:var(--mu);margin-bottom:8px">Yaoundé et Douala centre-ville</div>
+ <span style="background:#E3F0FC;color:#0078D4;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">2 000 FCFA</span>
+ </div>
+ </div>
+ <div style="background:var(--bg);border-radius:12px;overflow:hidden">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400&h=130&fit=crop" style="width:100%;height:110px;object-fit:cover" alt="">
+ <div style="padding:14px">
+ <div style="font-weight:700;font-size:14px;margin-bottom:5px">Standard 24-48h</div>
+ <div style="font-size:12.5px;color:var(--mu);margin-bottom:8px">Toutes les grandes villes</div>
+ <span style="background:#E8F5EF;color:var(--g);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">3 500 FCFA</span>
+ </div>
+ </div>
+ <div style="background:var(--bg);border-radius:12px;overflow:hidden">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=400&h=130&fit=crop" style="width:100%;height:110px;object-fit:cover" alt="">
+ <div style="padding:14px">
+ <div style="font-weight:700;font-size:14px;margin-bottom:5px">Retrait en magasin</div>
+ <div style="font-size:12.5px;color:var(--mu);margin-bottom:8px">KAMER360 — Bepanda, Douala</div>
+ <span style="background:#FEF9E7;color:#B8860B;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700">GRATUIT</span>
+ </div>
+ </div>
+ </div>
+ <div style="margin-top:16px;background:#E8F5EF;border-radius:10px;padding:13px 16px;font-size:13.5px;color:var(--gd)">
+ <strong>Livraison GRATUITE</strong> pour toute commande supérieure à <strong>50 000 FCFA</strong> (zones Yaoundé et Douala)
+ </div>
+ </div>
+
+ <!-- Paiements acceptés -->
+ <div style="background:#fff;border-radius:16px;padding:22px;border:1px solid var(--br);margin-bottom:24px;text-align:center">
+ <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;margin-bottom:16px">Moyens de paiement acceptés</div>
+ <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap">
+ <div style="background:var(--bg);border-radius:12px;padding:14px 22px;display:flex;align-items:center;gap:10px">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=50&h=50&fit=crop" style="width:36px;height:36px;border-radius:8px;object-fit:cover" alt="">
+ <div style="text-align:left"><div style="font-weight:700;font-size:13px">MTN Mobile Money</div><div style="font-size:11px;color:var(--mu)">*126#</div></div>
+ </div>
+ <div style="background:var(--bg);border-radius:12px;padding:14px 22px;display:flex;align-items:center;gap:10px">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=50&h=50&fit=crop" style="width:36px;height:36px;border-radius:8px;object-fit:cover" alt="">
+ <div style="text-align:left"><div style="font-weight:700;font-size:13px">Orange Money</div><div style="font-size:11px;color:var(--mu)">#150#</div></div>
+ </div>
+ <div style="background:var(--bg);border-radius:12px;padding:14px 22px;display:flex;align-items:center;gap:10px">
+ <img loading="lazy" src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=50&h=50&fit=crop" style="width:36px;height:36px;border-radius:8px;object-fit:cover" alt="">
+ <div style="text-align:left"><div style="font-weight:700;font-size:13px">Espèces</div><div style="font-size:11px;color:var(--mu)">À la livraison</div></div>
+ </div>
+ </div>
+ </div>
+
+</div><!-- /bmain -->
+
+<!-- ════════ FOOTER ════════ -->
+<footer class="bfooter">
+ <div class="bfooter-inner">
+ <div class="bfooter-grid">
+ <div>
+ <h4 id="footer-nom">KAMER360 — NGAPET LEMBE</h4>
+ <p id="footer-desc">La première plateforme de courses en ligne au Cameroun. Produits frais, prix compétitifs, livraison rapide partout au pays.</p>
+ <div style="margin-top:12px;font-size:12px">
+ <div id="footer-adresse"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7EC8A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> Bepanda, Douala, Cameroun</div>
+ <div id="footer-tel"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7EC8A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.77a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> +237 683 39 22 68 / 693 59 14 79</div>
+ <div id="footer-email"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7EC8A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:5px"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> lembetiny02@gmail.com</div>
+ </div>
+ </div>
+ <div>
+ <h4>Navigation</h4>
+ <a href="boutique.html">Boutique</a>
+ <a href="index.html">Espace gérant</a>
+ <a href="#info-livraison">Livraison</a>
+ <a href="#" onclick="ouvrirLegal('faq')" style="font-weight:600">&#10067; FAQ</a>
+ <a href="#" onclick="ouvrirLegal('cgv')" style="font-weight:600">&#128203; CGV</a>
+ <a href="#" onclick="ouvrirLegal('confidentialite')" style="font-weight:600">&#128274; Confidentialité</a>
+ </div>
+ <div>
+ <h4>Nos magasins</h4>
+ <div id="footer-magasins">
+ <a href="https://wa.me/237693591479" target="_blank">WhatsApp Business</a>
+ <a href="https://www.facebook.com/idriss.lembe.2025" target="_blank">Facebook</a>
+ <a href="https://www.threads.com/@ngapetlembeidriss" target="_blank">Threads</a>
+ <a href="https://youtube.com/@idrisscarlos-ov5kq" target="_blank">YouTube</a>
+ </div>
+ </div>
+ <div>
+ <h4>Application mobile</h4>
+ <div style="display:inline-block;background:#FCD116;color:#1a1a1a;font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;margin-bottom:10px;letter-spacing:.3px">🚀 BIENTÔT DISPONIBLE</div>
+ <div style="display:flex;flex-direction:column;gap:8px">
+   <div class="store-badge-soon" title="Application en cours de développement — disponible prochainement" style="display:flex;align-items:center;gap:10px;background:#0a0a0a;border:1px solid #2a2a2a;border-radius:10px;padding:8px 14px;cursor:default;opacity:.85">
+     <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M3 20.5V3.5c0-.59.34-1.11.84-1.36L13.69 12l-9.85 9.86c-.5-.25-.84-.77-.84-1.36zm13.81-5.38L6.05 21.34l8.49-8.49 2.27 2.27zm3.35-6.32c.34.27.59.69.59 1.2s-.21.9-.59 1.2l-2.36 1.35-2.55-2.55 2.55-2.55 2.36 1.35zM6.05 2.66l10.76 6.22-2.27 2.27-8.49-8.49z"/></svg>
+     <div>
+       <div style="font-size:7.5px;color:#9ca3af;line-height:1.2">Bientôt sur</div>
+       <div style="font-size:13px;font-weight:700;color:#fff;line-height:1.2">Google Play</div>
+     </div>
+   </div>
+   <div class="store-badge-soon" title="Application en cours de développement — disponible prochainement" style="display:flex;align-items:center;gap:10px;background:#0a0a0a;border:1px solid #2a2a2a;border-radius:10px;padding:8px 14px;cursor:default;opacity:.85">
+     <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.47-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.7.69 3.45 1.83-3.21 1.97-2.61 6.27.39 7.59-.69 1.36-1.62 2.71-2.49 3.59zM12.03 7.25c-.13-1.95 1.65-3.68 3.51-3.81.27 2.18-1.85 3.81-3.51 3.81z"/></svg>
+     <div>
+       <div style="font-size:7.5px;color:#9ca3af;line-height:1.2">Bientôt sur</div>
+       <div style="font-size:13px;font-weight:700;color:#fff;line-height:1.2">App Store</div>
+     </div>
+   </div>
+ </div>
+ <p style="font-size:11px;color:#9ca3af;margin-top:10px;line-height:1.5">📱 Pour l'instant, installez KAMER360 directement depuis votre navigateur — ajoutez-le à votre écran d'accueil !</p>
+ </div>
+ </div>
+ <div class="bfooter-bottom" id="footer-copy">
+ 2026 KAMER360 — NGAPET LEMBE IDRISS CARLOS — Tous droits réservés
+ </div>
+ </div>
+</footer>
+<div class="flag-bar"></div>
+
+<!-- ════════ BOUTON INSTALLER L'APP ════════ -->
+<div id="btn-installer-app" style="display:none;position:fixed;bottom:80px;right:16px;z-index:999;background:#007A3D;color:#fff;padding:10px 16px;border-radius:30px;box-shadow:0 4px 16px rgba(0,122,61,.4);cursor:pointer;align-items:center;gap:8px;font-size:13px;font-weight:700">
+ <img loading="lazy" src="https://img.icons8.com/ios/24/007A3D/smartphone-tablet.png" alt="mobile" style="width:18px;height:18px;vertical-align:middle"> Installer l'app
+</div>
+<!-- ════════ BOUTON WHATSAPP FLOTTANT ════════ -->
+<a class="wa-float" href="https://wa.me/237683392268?text=Bonjour,%20je%20veux%20passer%20une%20commande" target="_blank" title="Commander via WhatsApp">
+ <img loading="lazy" src="https://img.icons8.com/ios/24/007A3D/chat.png" alt="message" style="width:20px;height:20px;vertical-align:middle">
+</a>
+
+<!-- ════════ PANIER SLIDE ════════ -->
+<div class="cart-ov" id="cart-ov">
+ <div class="cart-bg" onclick="closeCart()"></div>
+ <div class="cart-panel">
+ <div class="cart-head">
+ <h3>Mon panier <img loading="lazy" src="https://img.icons8.com/ios/24/007A3D/shopping-cart.png" alt="panier" style="width:20px;height:20px;vertical-align:middle"></h3>
+ <button class="cart-close" onclick="closeCart()"><img loading="lazy" src="https://img.icons8.com/ios/18/CE1126/delete-sign.png" alt="fermer" style="width:14px;height:14px;vertical-align:middle"></button>
+ </div>
+ <div class="cart-items" id="cart-items"></div>
+ <div class="cart-foot">
+ <div class="cart-row"><span>Sous-total</span><span id="cart-st">0 FCFA</span></div>
+ <div class="cart-row"><span>Livraison</span><span style="color:var(--g);font-weight:700" id="cart-liv">À calculer</span></div>
+ <div class="cart-total-row"><span>TOTAL</span><span id="cart-tot">0 FCFA</span></div>
+ <button class="cart-cmd-btn" onclick="openCmdModal()" id="cart-cmd-btn" disabled>
+ Passer la commande
+ </button>
+ </div>
+ </div>
+</div>
+
+<!-- ════════ MODAL COMMANDE ════════ -->
+<div class="cmd-ov" id="cmd-ov">
+ <div class="cmd-modal">
+ <div class="cmd-head">
+ <h3 id="cmd-modal-title">Ma commande</h3>
+ <button class="cart-close" onclick="closeCmdModal()"><img loading="lazy" src="https://img.icons8.com/ios/18/CE1126/delete-sign.png" alt="fermer" style="width:14px;height:14px;vertical-align:middle"></button>
+ </div>
+
+ <!-- Étapes -->
+ <div class="cmd-body">
+ <div class="cmd-step" id="cmd-steps">
+ <div class="cmd-step-item">
+ <div class="cmd-step-dot active" id="step-dot-1">1</div>
+ <div class="cmd-step-lbl">Infos</div>
+ </div>
+ <div class="cmd-step-line" id="step-line-1"></div>
+ <div class="cmd-step-item">
+ <div class="cmd-step-dot" id="step-dot-2">2</div>
+ <div class="cmd-step-lbl">Paiement</div>
+ </div>
+ <div class="cmd-step-line" id="step-line-2"></div>
+ <div class="cmd-step-item">
+ <div class="cmd-step-dot" id="step-dot-3">3</div>
+ <div class="cmd-step-lbl">Confirmation</div>
+ </div>
+ </div>
+
+ <!-- ÉTAPE 1 : Infos client -->
+ <div id="step-1">
+ <div class="cform">
+ <div class="cfg-row">
+ <div class="cfg">
+ <label>Prénom *</label>
+ <input type="text" id="cli-prenom" placeholder="Prénom">
+ </div>
+ <div class="cfg">
+ <label>Nom *</label>
+ <input type="text" id="cli-nom" placeholder="Nom de famille">
+ </div>
+ </div>
+ <div class="cfg">
+ <label>Téléphone *</label>
+ <input type="tel" id="cli-tel" placeholder="+237 6XX XX XX XX">
+ </div>
+ <div class="cfg">
+ <label>Ville de livraison *</label>
+ <div style="position:relative">
+ <input type="text" id="cli-ville-search" placeholder="Tapez votre ville ou quartier..." autocomplete="off"
+ style="width:100%;padding:10px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;outline:none;box-sizing:border-box"
+ oninput="rechercherVilleBoutique(this)">
+ <div id="cli-ville-list" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid #e5e7eb;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:999;max-height:200px;overflow-y:auto;margin-top:4px"></div>
+ </div>
+ <input type="hidden" id="cli-ville" value="">
+ </div>
+ <div class="cfg" id="adresse-wrap">
+ <label>Adresse complète *</label>
+ <textarea id="cli-adresse" placeholder="Quartier, rue, repère..."></textarea>
+ </div>
+ <div class="cfg">
+ <label>Supermarché préféré</label>
+ <select id="cli-sm" data-sm-select>
+ <option>KAMER360 — Douala</option>
+ </select>
+ </div>
+ <div class="cfg">
+ <label>Notes pour la livraison</label>
+ <textarea id="cli-notes" placeholder="Instructions spéciales, disponibilités..." style="min-height:55px"></textarea>
+ </div>
+ </div>
+ </div>
+
+ <!-- ÉTAPE 2 : Paiement -->
+ <div id="step-2" style="display:none">
+ <!-- Code promo -->
+ <div style="margin-bottom:16px">
+ <div style="font-size:11px;font-weight:700;color:#999;letter-spacing:.08em;margin-bottom:6px">CODE PROMO</div>
+ <div style="display:flex;gap:8px">
+ <input type="text" id="promo-input" placeholder="Entrez votre code promo" style="flex:1;padding:12px;border:1.5px solid #e0e0e0;border-radius:10px;font-size:14px;text-transform:uppercase">
+ <button onclick="appliquerPromoCode()" style="background:#007A3D;color:#fff;border:none;padding:12px 16px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">Appliquer</button>
+ </div>
+ <div id="promo-msg" style="font-size:12px;margin-top:6px;display:none"></div>
+ </div>
+ <!-- Récapitulatif -->
+ <div class="recap" id="recap-items"></div>
+
+ <div style="font-size:12px;font-weight:700;color:var(--mu);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">
+ Choisir le mode de paiement
+ </div>
+
+ <div class="pay-opts">
+ <label class="pay-opt selected" id="opt-mtn" onclick="selectPay('mtn')">
+ <input type="radio" name="pay" value="mtn" checked>
+ <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/MTN_Logo.svg/200px-MTN_Logo.svg.png" class="pay-opt-logo" alt="MTN" style="object-fit:contain;background:#ffcc00;padding:4px;border-radius:6px">
+ <div class="pay-opt-inf">
+ <h4>MTN Mobile Money</h4>
+ <p>Paiement sécurisé via *126#</p>
+ </div>
+ <div class="pay-check" id="chk-mtn"><img loading="lazy" src="https://img.icons8.com/ios/18/007A3D/checkmark.png" alt="ok" style="width:14px;height:14px;vertical-align:middle"></div>
+ </label>
+
+ <label class="pay-opt" id="opt-orange" onclick="selectPay('orange')">
+ <input type="radio" name="pay" value="orange">
+ <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c8/Orange_logo.svg/200px-Orange_logo.svg.png" class="pay-opt-logo" alt="Orange" style="object-fit:contain;background:#ff6600;padding:4px;border-radius:6px">
+ <div class="pay-opt-inf">
+ <h4>Orange Money</h4>
+ <p>Paiement sécurisé via #150#</p>
+ </div>
+ <div class="pay-check" id="chk-orange"></div>
+ </label>
+
+ <label class="pay-opt" id="opt-yoomee" onclick="selectPay('yoomee')">
+ <input type="radio" name="pay" value="yoomee">
+ <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Yoomee_logo.png/200px-Yoomee_logo.png" class="pay-opt-logo" alt="Yoomee" onerror="this.style.background='#0055a5';this.style.color='#fff';this.alt='YM'" style="object-fit:contain;background:#0055a5;padding:4px;border-radius:6px">
+ <div class="pay-opt-inf">
+ <h4>Yoomee Money</h4>
+ <p>Paiement via Yoomee Mobile</p>
+ </div>
+ <div class="pay-check" id="chk-yoomee"></div>
+ </label>
+
+ <label class="pay-opt" id="opt-virement" onclick="selectPay('virement')">
+ <input type="radio" name="pay" value="virement">
+ <div class="pay-opt-logo" style="background:#1e3a5f;border-radius:6px;display:flex;align-items:center;justify-content:center">
+ <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+ </div>
+ <div class="pay-opt-inf">
+ <h4>Virement bancaire</h4>
+ <p>Afriland, SCB, UBA, Ecobank...</p>
+ </div>
+ <div class="pay-check" id="chk-virement"></div>
+ </label>
+
+ <label class="pay-opt" id="opt-especes" onclick="selectPay('especes')">
+ <input type="radio" name="pay" value="especes">
+ <div class="pay-opt-logo" style="background:#007A3D;border-radius:6px;display:flex;align-items:center;justify-content:center">
+ <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/></svg>
+ </div>
+ <div class="pay-opt-inf">
+ <h4>Espèces à la livraison</h4>
+ <p>Payez à la réception de votre commande</p>
+ </div>
+ <div class="pay-check" id="chk-especes"></div>
+ </label>
+
+ <label class="pay-opt" id="opt-carte" onclick="selectPay('carte')">
+ <input type="radio" name="pay" value="carte">
+ <div class="pay-opt-logo" style="background:linear-gradient(135deg,#1a1f71,#eb001b);border-radius:6px;display:flex;align-items:center;justify-content:center">
+ <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>
+ </div>
+ <div class="pay-opt-inf">
+ <h4>Carte bancaire / Crédit</h4>
+ <p>Visa, Mastercard — paiement sécurisé en ligne</p>
+ </div>
+ <div class="pay-check" id="chk-carte"></div>
+ </label>
+ </div>
+
+ <!-- Numéro Mobile Money -->
+ <div class="pay-num-wrap" id="pay-num-wrap" style="
+ background:#fff3cd;
+ border:2px solid #e6a817;
+ border-radius:12px;
+ padding:16px;
+ margin:14px 0;
+ ">
+ <label id="pay-num-label" style="
+ display:block;
+ font-size:13px;
+ font-weight:700;
+ color:#b45309;
+ letter-spacing:.08em;
+ margin-bottom:8px;
+ "><img loading="lazy" src="https://img.icons8.com/ios/20/e6a817/warning.png" alt="attention" style="width:18px;height:18px;vertical-align:middle"> NUMÉRO MTN MOBILE MONEY OBLIGATOIRE *</label>
+ <input type="tel" id="pay-num" placeholder="Ex: 683 39 22 68" maxlength="20"
+ oninput="clearPayNumError()" style="
+ width:100%;
+ padding:14px 16px;
+ font-size:18px;
+ font-weight:600;
+ border:2px solid #e6a817;
+ border-radius:10px;
+ background:#fffbf0;
+ color:#1a1a1a;
+ box-sizing:border-box;
+ outline:none;
+ letter-spacing:.05em;
+ ">
+ <p id="pay-num-hint" style="
+ font-size:12px;
+ color:#92400e;
+ margin:6px 0 0;
+ "><img loading="lazy" src="https://img.icons8.com/ios/24/007A3D/phone.png" alt="telephone" style="width:20px;height:20px;vertical-align:middle"> Entrez le numéro qui recevra la demande de paiement</p>
+ </div>
+
+ <!-- Instructions paiement -->
+ <div class="pay-instruction" id="pay-instruction">
+ <strong>Comment payer :</strong><br>
+ 1. Composez <strong>*126#</strong> sur votre téléphone MTN<br>
+ 2. Sélectionnez <strong>"Payer marchand"</strong><br>
+ 3. Entrez le numéro marchand : <strong class="mtn-num">683 39 22 68</strong><br>
+ 4. Entrez le montant : <strong id="pay-montant">0 FCFA</strong><br>
+ 5. Entrez votre code secret et validez<br>
+ <br>
+ Vous recevrez un <strong>SMS de confirmation</strong> et notre équipe vous contactera.
+ </div>
+
+ <div id="especes-instruction" style="display:none" class="pay-instruction">
+ Préparez le montant exact en espèces : <strong id="pay-montant-esp">0 FCFA</strong><br>
+ Notre livreur se déplacera à votre adresse. Vous serez contacté avant la livraison.
+ </div>
+
+ <div id="carte-instruction" style="display:none" class="pay-instruction">
+ <strong>Paiement par carte bancaire / crédit :</strong><br>
+ Vous serez redirigé vers une page de paiement <strong>sécurisée NotchPay</strong> pour entrer vos informations de carte (Visa, Mastercard).<br><br>
+ <div style="background:#fff;border:1.5px solid #e5e7eb;border-radius:10px;padding:12px;margin:10px 0">
+   <label style="font-size:11px;font-weight:700;color:#374151;display:block;margin-bottom:6px">EMAIL (requis pour le reçu de paiement) *</label>
+   <input id="carte-email" type="email" placeholder="votre@email.com"
+     style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:13px;box-sizing:border-box;font-family:inherit;outline:none">
+ </div>
+ <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#6b7280;margin-top:8px">
+   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#007A3D" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+   Paiement 100% sécurisé — KAMER360 ne stocke jamais vos informations de carte
+ </div>
+ Montant à payer : <strong id="pay-montant-carte">0 FCFA</strong>
+ </div>
+ </div>
+
+ <!-- ═══ MODAL PAIEMENT INTÉGRÉ (carte + mobile money, 100% dans l'app) ═══ -->
+ <div id="m-paiement-embed" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10005;align-items:center;justify-content:center;padding:16px">
+   <div style="background:#fff;border-radius:20px;width:100%;max-width:440px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden">
+
+     <div style="background:linear-gradient(135deg,#007A3D,#005C2E);padding:18px 22px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+       <div>
+         <div style="font-size:16px;font-weight:800;color:#fff" id="pe-titre">💳 Paiement sécurisé</div>
+         <div style="font-size:11px;color:rgba(255,255,255,.75);margin-top:2px">KAMER360 · Commande <span id="pe-cmd-num"></span></div>
+       </div>
+       <button onclick="fermerPaiementEmbed()" id="pe-close-btn" style="background:rgba(255,255,255,.18);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px">✕</button>
+     </div>
+
+     <!-- Montant -->
+     <div style="padding:16px 22px 0">
+       <div style="background:#f0fdf4;border-radius:12px;padding:12px 16px;text-align:center;margin-bottom:14px">
+         <div style="font-size:11px;color:#065f46">Montant à payer</div>
+         <div style="font-size:24px;font-weight:800;color:#007A3D" id="pe-montant">0 FCFA</div>
+       </div>
+     </div>
+
+     <!-- ── Vue Mobile Money (intégré, pas d'USSD manuel) ── -->
+     <div id="pe-view-mobile" style="display:none;padding:0 22px 22px">
+       <div style="text-align:center;margin-bottom:14px">
+         <div id="pe-mobile-spinner" style="width:48px;height:48px;border:4px solid #d1fae5;border-top-color:#007A3D;border-radius:50%;margin:0 auto 12px;animation:pe-spin 1s linear infinite"></div>
+         <div style="font-size:13px;font-weight:700;color:#111" id="pe-mobile-statut">Envoi de la demande de paiement...</div>
+         <div style="font-size:12px;color:#6b7280;margin-top:6px" id="pe-mobile-instr">Une notification va apparaître sur votre téléphone</div>
+       </div>
+       <div style="background:#f9fafb;border-radius:12px;padding:12px;font-size:12px;color:#6b7280;line-height:1.6">
+         📱 Vous allez recevoir une demande de confirmation directement sur votre téléphone <strong id="pe-mobile-num"></strong>.<br>
+         Entrez votre code secret pour valider — tout se passe ici, vous n'avez rien à composer manuellement.
+       </div>
+     </div>
+
+     <!-- ── Vue Carte bancaire (iframe NotchPay invisible) ── -->
+     <div id="pe-view-carte" style="display:none;flex:1;display:flex;flex-direction:column;min-height:420px">
+       <div id="pe-carte-loading" style="text-align:center;padding:60px 22px">
+         <div style="width:48px;height:48px;border:4px solid #d1fae5;border-top-color:#007A3D;border-radius:50%;margin:0 auto 12px;animation:pe-spin 1s linear infinite"></div>
+         <div style="font-size:13px;color:#6b7280">Chargement du formulaire sécurisé...</div>
+       </div>
+       <iframe id="pe-carte-iframe" style="display:none;width:100%;flex:1;border:none;min-height:420px" title="Paiement carte bancaire sécurisé"></iframe>
+       <div style="padding:10px 22px;display:flex;align-items:center;gap:6px;font-size:11px;color:#9ca3af;border-top:1px solid #f3f4f6">
+         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+         Paiement chiffré — vos données carte ne transitent jamais par KAMER360
+       </div>
+     </div>
+
+     <!-- ── Vue résultat (succès/échec) ── -->
+     <div id="pe-view-resultat" style="display:none;padding:30px 22px;text-align:center">
+       <div id="pe-resultat-icon" style="font-size:48px;margin-bottom:12px">✅</div>
+       <div id="pe-resultat-titre" style="font-size:17px;font-weight:800;color:#007A3D;margin-bottom:6px">Paiement confirmé !</div>
+       <div id="pe-resultat-msg" style="font-size:13px;color:#6b7280;line-height:1.5"></div>
+       <button onclick="fermerPaiementEmbed()" id="pe-resultat-btn" style="margin-top:18px;width:100%;padding:12px;background:#007A3D;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Continuer</button>
+     </div>
+
+   </div>
+ </div>
+ <style>@keyframes pe-spin{to{transform:rotate(360deg)}}</style>
+
+ <!-- ÉTAPE 3 : Succès -->
+ <div id="step-3" style="display:none">
+ <div class="success-screen">
+ <div class="success-ico"><img loading="lazy" src="https://img.icons8.com/ios/18/007A3D/checkmark.png" alt="ok" style="width:16px;height:16px;vertical-align:middle"></div>
+ <h3>Commande confirmée !</h3>
+ <p>Votre commande a été enregistrée avec succès. Notre équipe vous contactera très bientôt.</p>
+ <div class="cmd-num" id="success-num">#CM-0000</div>
+ <div class="success-details" id="success-details"></div>
+ <div style="display:flex;flex-direction:column;gap:9px">
+ <button class="mbtn primary" onclick="closeCmdModal();resetBoutique()">
+ Continuer mes achats
+ </button>
+ <a id="wa-confirm" href="#" target="_blank" style="display:block;background:#25D366;color:#fff;padding:12px;border-radius:10px;font-weight:700;font-size:14px;text-align:center;text-decoration:none">
+ Confirmer via WhatsApp
+ </a>
+ </div>
+ </div>
+ </div>
+ </div>
+
+ <div class="cmd-foot" id="cmd-foot">
+ <button class="mbtn sec" id="btn-retour" onclick="stepBack()" style="display:none">Retour</button>
+ <button class="mbtn primary" id="btn-suivant" onclick="stepNext()">Continuer</button>
+ </div>
+ </div>
+</div>
+
+<!-- Toast -->
+<div class="btw" id="btw"></div>
+
+<!-- SDK Supabase (base de données) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Config + Services -->
+<script src="config.js"></script>
+<script src="villes.js"></script>
+<script src="db.js"></script>
+<script src="paiement.js"></script>
+<script src="marketplace-data.js"></script>
+<script src="boutique.js"></script>
+<script src="marketplace.js"></script>
+<script src="marketplace-auto-pressing.js"></script>
+<script>
+// Enregistrement du Service Worker (PWA)
+if ('serviceWorker' in navigator) {
+ window.addEventListener('load', function() {
+ navigator.serviceWorker.register('./sw.js')
+ .then(function(reg) {
+ console.log('[PWA] Service Worker enregistré');
+ // Proposer l'installation
+ window.addEventListener('beforeinstallprompt', function(e) {
+ e.preventDefault();
+ var btn = document.getElementById('btn-installer-app');
+ if (btn) {
+ btn.style.display = 'flex';
+ btn.addEventListener('click', function() {
+ e.prompt();
+ e.userChoice.then(function(r){ if(r.outcome==='accepted') btn.style.display='none'; });
+ });
+ }
+ });
+ })
+ .catch(function(err) { console.warn('[PWA] SW non enregistré:', err); });
+ });
+}
+</script>
+
+<!-- ════════ MODAL COMPTE CLIENT ════════ -->
+<div id="modal-compte-client" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;padding:16px">
+ <div style="background:#fff;border-radius:20px;width:100%;max-width:420px;max-height:90vh;overflow-y:auto">
+
+ <!-- Header modal -->
+ <div style="background:linear-gradient(135deg,#007A3D,#00a352);padding:20px 24px;border-radius:20px 20px 0 0;display:flex;justify-content:space-between;align-items:center">
+ <div>
+ <div style="color:#fff;font-size:20px;font-weight:800" id="modal-compte-titre">Mon Compte</div>
+ <div style="color:rgba(255,255,255,0.8);font-size:13px">KAMER360</div>
+ </div>
+ <button onclick="fermerCompteClient()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:20px;cursor:pointer">×</button>
+ </div>
+
+ <!-- VUE : CONNEXION -->
+ <div id="vue-login-client" style="padding:24px">
+ <p style="color:#666;font-size:14px;margin-bottom:20px;text-align:center">Connectez-vous pour suivre vos commandes et gagner des points fidélité</p>
+ <div style="display:flex;flex-direction:column;gap:14px">
+ <div>
+ <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">EMAIL</label>
+ <input id="cli-login-email" type="email" placeholder="votre@email.com" style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
+ </div>
+ <div>
+ <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">MOT DE PASSE</label>
+ <input id="cli-login-pwd" type="password" placeholder="Votre mot de passe" style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
+ </div>
+ <div id="cli-login-err" style="color:#ef4444;font-size:13px;display:none"></div>
+ <button onclick="connecterClient()" style="background:#007A3D;color:#fff;border:none;padding:14px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;width:100%">Se connecter</button>
+ <div style="text-align:center;margin:8px 0 4px"><span onclick="ouvrirForgotClient()" style="color:#007A3D;font-size:13px;font-weight:600;cursor:pointer;text-decoration:underline">&#128273; Mot de passe oublié ?</span></div>
+ <div style="text-align:center;color:#666;font-size:13px">
+ Pas encore de compte ?
+ <span onclick="afficherVueClient('register')" style="color:#007A3D;font-weight:700;cursor:pointer"> Créer un compte</span>
+ </div>
+ </div>
+ </div>
+
+ <!-- VUE : INSCRIPTION -->
+ <div id="vue-register-client" style="padding:24px;display:none">
+ <p style="color:#666;font-size:14px;margin-bottom:20px;text-align:center">Créez votre compte pour profiter de nos offres et suivre vos commandes</p>
+ <div style="display:flex;flex-direction:column;gap:12px">
+ <div>
+ <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">NOM COMPLET *</label>
+ <input id="cli-reg-nom" type="text" placeholder="Jean Dupont" style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
+ </div>
+ <div>
+ <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">TÉLÉPHONE *</label>
+ <input id="cli-reg-tel" type="tel" placeholder="+237 6XX XX XX XX" style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
+ </div>
+ <div>
+ <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">EMAIL *</label>
+ <input id="cli-reg-email" type="email" placeholder="votre@email.com" style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
+ </div>
+ <div>
+ <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">ADRESSE DE LIVRAISON</label>
+ <input id="cli-reg-adresse" type="text" placeholder="Ex: Bepanda, Douala" style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
+ </div>
+ <div>
+ <label style="font-size:12px;font-weight:700;color:#555;display:block;margin-bottom:4px">MOT DE PASSE *</label>
+ <input id="cli-reg-pwd" type="password" placeholder="Minimum 6 caractères" style="width:100%;padding:12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;box-sizing:border-box">
+ </div>
+ <div id="cli-reg-err" style="color:#ef4444;font-size:13px;display:none"></div>
+ <button onclick="inscrireClient()" style="background:#007A3D;color:#fff;border:none;padding:14px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;width:100%">Créer mon compte</button>
+ <div style="text-align:center;color:#666;font-size:13px">
+ Déjà un compte ?
+ <span onclick="afficherVueClient('login')" style="color:#007A3D;font-weight:700;cursor:pointer"> Se connecter</span>
+ </div>
+ </div>
+ </div>
+
+ <!-- VUE : PROFIL CLIENT CONNECTÉ -->
+ <div id="vue-profil-client" style="padding:24px;display:none">
+ <div style="text-align:center;margin-bottom:20px">
+ <div style="width:70px;height:70px;border-radius:50%;background:#007A3D;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:28px;color:#fff;font-weight:800" id="cli-avatar">J</div>
+ <div style="font-weight:800;font-size:18px" id="cli-profil-nom">Jean</div>
+ <div style="color:#666;font-size:13px" id="cli-profil-email">jean@email.com</div>
+ <div style="color:#666;font-size:13px" id="cli-profil-tel">+237 6XX XX XX XX</div>
+ <!-- Points fidélité -->
+ <div style="background:#FFF9E6;border:2px solid #FCD116;border-radius:12px;padding:10px;margin-top:12px;display:inline-block">
+ <div style="font-size:24px;font-weight:800;color:#b45309" id="cli-profil-points">0</div>
+ <div style="font-size:12px;color:#92400e">Points fidélité</div>
+ </div>
+ </div>
+
+ <!-- Menu 6 fonctionnalités client -->
+ <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+  <button onclick="ouvrirVueClient('wallet')" style="background:#f0faf5;border:1.5px solid #007A3D;border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center">
+   <div style="font-size:26px;margin-bottom:6px">💳</div>
+   <div style="font-size:12px;font-weight:700;color:#007A3D">KAMER Pay</div>
+   <div style="font-size:10px;color:#666;margin-top:2px">Solde & Paiements</div>
+  </button>
+  <button onclick="ouvrirVueClient('tracking')" style="background:#f0f7ff;border:1.5px solid #1565C0;border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center">
+   <div style="font-size:26px;margin-bottom:6px">🛵</div>
+   <div style="font-size:12px;font-weight:700;color:#1565C0">Mes livraisons</div>
+   <div style="font-size:10px;color:#666;margin-top:2px">Suivi GPS temps réel</div>
+  </button>
+  <button onclick="ouvrirVueClient('avis')" style="background:#fffbeb;border:1.5px solid #b8860b;border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center">
+   <div style="font-size:26px;margin-bottom:6px">⭐</div>
+   <div style="font-size:12px;font-weight:700;color:#b8860b">Mes avis</div>
+   <div style="font-size:10px;color:#666;margin-top:2px">Notes & commentaires</div>
+  </button>
+  <button onclick="ouvrirVueClient('chat')" style="background:#f5f0ff;border:1.5px solid #4A148C;border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center">
+   <div style="font-size:26px;margin-bottom:6px">💬</div>
+   <div style="font-size:12px;font-weight:700;color:#4A148C">Messages</div>
+   <div style="font-size:10px;color:#666;margin-top:2px">Chat avec le gérant</div>
+  </button>
+  <button onclick="ouvrirVueClient('notif')" style="background:#fff3f0;border:1.5px solid #E65100;border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center">
+   <div style="font-size:26px;margin-bottom:6px">🔔</div>
+   <div style="font-size:12px;font-weight:700;color:#E65100">Notifications</div>
+   <div style="font-size:10px;color:#666;margin-top:2px">Alertes & offres</div>
+  </button>
+  <button onclick="ouvrirVueClient('offline')" style="background:#f0f8f0;border:1.5px solid #2d6a2d;border-radius:12px;padding:14px 10px;cursor:pointer;text-align:center">
+   <div style="font-size:26px;margin-bottom:6px">📶</div>
+   <div style="font-size:12px;font-weight:700;color:#2d6a2d">Hors-ligne</div>
+   <div style="font-size:10px;color:#666;margin-top:2px">Mode sans connexion</div>
+  </button>
+ </div>
+
+ <!-- Mes commandes -->
+ <h4 style="margin-bottom:10px;color:#007A3D">Mes dernières commandes</h4>
+ <div id="cli-mes-commandes" style="margin-bottom:16px">
+ <p style="color:#999;font-size:13px;text-align:center">Aucune commande pour l'instant</p>
+ </div>
+
+ <!-- Bouton déconnexion -->
+ <button onclick="deconnecterClient()" style="background:#fff;color:#ef4444;border:2px solid #ef4444;padding:12px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;width:100%">
+ Se déconnecter
+ </button>
+ </div>
+
+ 
+<!-- ════ VUES FONCTIONNALITÉS CLIENT ════ -->
+<div id="vue-wallet-client" style="padding:20px;display:none"></div>
+<div id="vue-tracking-client" style="padding:20px;display:none"></div>
+<div id="vue-avis-client" style="padding:20px;display:none"></div>
+<div id="vue-chat-client" style="padding:20px;display:none"></div>
+<div id="vue-notif-client" style="padding:20px;display:none"></div>
+<div id="vue-offline-client" style="padding:20px;display:none"></div>
+
+</div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!--  MARKETPLACE PANEL                                            -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div id="marketplace-overlay" onclick="if(event.target===this)fermerMarketplace()">
+ <div id="marketplace-panel">
+
+  <!-- Header -->
+  <div class="mkt-header">
+   <div>
+    <h2> Marketplace KAMER360</h2>
+    <p>Énergie · Menuiserie · Restauration · Santé · BTP</p>
+   </div>
+   <button class="mkt-close" onclick="fermerMarketplace()">X</button>
+  </div>
+
+  <!-- Onglets -->
+  <div class="mkt-tabs">
+   <button class="mkt-tab-btn active" id="tab-energie" onclick="switchMktTab('energie')">
+    Énergie Solaire
+   </button>
+   <button class="mkt-tab-btn" id="tab-menuiserie" onclick="switchMktTab('menuiserie')">
+    Menuiserie
+   </button>
+   <button class="mkt-tab-btn" id="tab-resto" onclick="switchMktTab('resto')">
+    Restauration
+   </button>
+   <button class="mkt-tab-btn" id="tab-sante" onclick="switchMktTab('sante')">
+    Santé
+   </button>
+   <button class="mkt-tab-btn" id="tab-btp" onclick="switchMktTab('btp')">
+    BTP & Matériaux
+   </button>
+   <button class="mkt-tab-btn" id="tab-education" onclick="switchMktTab('education')">
+    Éducation
+   </button>
+   <button class="mkt-tab-btn" id="tab-immobilier" onclick="switchMktTab('immobilier')">
+    Immobilier
+   </button>
+   <button class="mkt-tab-btn" id="tab-coiffure" onclick="switchMktTab('coiffure')">
+    Coiffure
+   </button>
+   <button class="mkt-tab-btn" id="tab-logistique" onclick="switchMktTab('logistique')">
+    Logistique
+   </button>
+   <button class="mkt-tab-btn" id="tab-agriculture" onclick="switchMktTab('agriculture')">
+    Agriculture
+   </button>
+   <button class="mkt-tab-btn" id="tab-automobile" onclick="switchMktTab('automobile')">
+    <span style="font-size:22px">&#128664;</span>Automobile
+   </button>
+   <button class="mkt-tab-btn" id="tab-pressing" onclick="switchMktTab('pressing')">
+    <span style="font-size:22px">&#128059;</span>Pressing
+   </button>
+  </div>
+
+  <!--  SECTION ÉNERGIE  -->
+  <div class="mkt-section active" id="mkt-energie">
+   <div class="mkt-section-header">
+    <div>
+     <div class="mkt-section-title"> Énergie Solaire & Électrique</div>
+     <div style="font-size:12px;color:#666;margin-top:2px">Panneaux, kits complets, batteries — avec devis installation</div>
+    </div>
+    <select class="mkt-filter" id="mkt-energie-cat" onchange="renderMktEnergie()">
+     <option value="">Toutes catégories</option>
+     <option>Solaire</option><option>Kit</option><option>Batterie</option>
+     <option>Onduleur</option><option>Groupe</option><option>Accessoire</option><option>LED</option>
+    </select>
+   </div>
+   <div id="mkt-energie-content"></div>
+  </div>
+
+  <!--  SECTION MENUISERIE  -->
+  <div class="mkt-section" id="mkt-menuiserie">
+   <div class="mkt-section-header">
+    <div>
+     <div class="mkt-section-title"> Galerie Menuiserie</div>
+     <div style="font-size:12px;color:#666;margin-top:2px">Réalisations sur mesure — Commandez votre modèle similaire</div>
+    </div>
+    <select class="mkt-filter" id="mkt-menu-cat" onchange="renderMktMenuiserie()">
+     <option value="">Toutes catégories</option>
+     <option>Chambres</option><option>Salons</option><option>Cuisines</option>
+     <option>Bureaux</option><option>Portes</option><option>Salles à manger</option>
+    </select>
+   </div>
+   <div id="mkt-menuiserie-content"></div>
+  </div>
+
+  <!--  SECTION RESTAURATION  -->
+  <div class="mkt-section" id="mkt-resto">
+   <div class="mkt-section-header">
+    <div>
+     <div class="mkt-section-title"> Restaurants & Menus</div>
+     <div style="font-size:12px;color:#666;margin-top:2px">Commandez vos plats — Livraison ou à emporter</div>
+    </div>
+    <select class="mkt-filter" id="mkt-resto-ville" onchange="renderMktRestaurants()">
+     <option value="">Toutes villes</option>
+     <option>Douala</option><option>Yaoundé</option>
+    </select>
+   </div>
+   <div id="mkt-resto-liste"></div>
+  </div>
+
+  <!--  SECTION SANTÉ  -->
+  <div class="mkt-section" id="mkt-sante">
+   <div class="mkt-section-header">
+    <div>
+     <div class="mkt-section-title"> Santé & Pharmacie</div>
+     <div style="font-size:12px;color:#666;margin-top:2px">RDV médecin, téléconsultation, pharmacie en ligne</div>
+    </div>
+    <select class="mkt-filter" id="mkt-sante-tab" onchange="renderMktSante()">
+     <option value="medecins">Médecins & RDV</option>
+     <option value="pharmacie">Pharmacie en ligne</option>
+    </select>
+   </div>
+   <div id="mkt-sante-content"></div>
+  </div>
+
+  <!--  SECTION BTP  -->
+  <div class="mkt-section" id="mkt-btp">
+   <div class="mkt-section-header">
+    <div>
+     <div class="mkt-section-title"> BTP & Matériaux</div>
+     <div style="font-size:12px;color:#666;margin-top:2px">Matériaux de construction + artisans partenaires</div>
+    </div>
+    <div style="display:flex;gap:8px">
+     <select class="mkt-filter" id="mkt-btp-tab" onchange="renderMktBTP()">
+      <option value="materiaux">Matériaux</option>
+      <option value="artisans">Artisans</option>
+     </select>
+     <select class="mkt-filter" id="mkt-btp-cat" onchange="renderMktBTP()" style="display:block">
+      <option value="">Toutes catégories</option>
+      <option>Gros œuvre</option><option>Ferraillage</option><option>Maçonnerie</option>
+      <option>Carrelage</option><option>Peinture</option><option>Toiture</option>
+      <option>Plomberie</option><option>Électricité</option>
+     </select>
+    </div>
+   </div>
+   <div id="mkt-btp-content"></div>
+  </div>
+
+  <!--  SECTION ÉDUCATION  -->
+  <div class="mkt-section" id="mkt-education">
+   <div class="mkt-section-header">
+    <div>
+     <div class="mkt-section-title"> Éducation & Librairie</div>
+     <div style="font-size:12px;color:#666;margin-top:2px">Fournitures scolaires · Cours particuliers · Librairie</div>
+    </div>
+   </div>
+
+   <!-- Sous-onglets -->
+   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button onclick="document.getElementById('mkt-edu-tab').value='fournitures';renderMktEducation()"
+     style="display:flex;align-items:center;gap:6px;padding:9px 16px;border:1.5px solid #e5e7eb;border-radius:22px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555"
+     id="btn-edu-fournitures">
+      Fournitures scolaires
+    </button>
+    <button onclick="document.getElementById('mkt-edu-tab').value='cours';renderMktEducation()"
+     style="display:flex;align-items:center;gap:6px;padding:9px 16px;border:1.5px solid #e5e7eb;border-radius:22px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555"
+     id="btn-edu-cours">
+      Cours particuliers
+    </button>
+    <button onclick="document.getElementById('mkt-edu-tab').value='livres';renderMktEducation()"
+     style="display:flex;align-items:center;gap:6px;padding:9px 16px;border:1.5px solid #e5e7eb;border-radius:22px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555"
+     id="btn-edu-livres">
+      Librairie
+    </button>
+    <input type="hidden" id="mkt-edu-tab" value="fournitures">
+   </div>
+
+   <!-- Barre recherche + filtre -->
+   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <input type="text" id="mkt-edu-search" placeholder=" Rechercher..." oninput="renderMktEducation()"
+     style="flex:1;min-width:180px;padding:9px 14px;border:1.5px solid #d1d5db;border-radius:22px;font-size:13px;outline:none">
+    <select id="mkt-edu-cat" onchange="renderMktEducation()"
+     style="padding:9px 14px;border:1.5px solid #d1d5db;border-radius:22px;font-size:13px;outline:none;cursor:pointer">
+     <option value="">Toutes catégories</option>
+     <option>Papeterie</option>
+     <option>Matériel</option>
+     <option>Uniformes</option>
+     <option>Imprimerie</option>
+     <option>Scolaire</option>
+     <option>Roman</option>
+     <option>Développement</option>
+     <option>BD/Jeunesse</option>
+    </select>
+   </div>
+
+   <!-- Contenu dynamique -->
+   <div id="mkt-edu-content"></div>
+  </div>
+
+
+  <!--  SECTION IMMOBILIER  -->
+  <div class="mkt-section" id="mkt-immobilier">
+   <div class="mkt-section-header">
+    <div>
+     <div class="mkt-section-title"> Annonces Immobilières</div>
+     <div style="font-size:12px;color:#666;margin-top:2px">Locations, ventes, hôtels · Agents certifiés</div>
+    </div>
+   </div>
+   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button onclick="document.getElementById('mkt-immo-tab').value='annonces';renderMktImmobilier()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555"> Annonces</button>
+    <button onclick="document.getElementById('mkt-immo-tab').value='agents';renderMktImmobilier()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555"> Agents</button>
+    <input type="hidden" id="mkt-immo-tab" value="annonces">
+   </div>
+   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <select id="mkt-immo-type" onchange="renderMktImmobilier()" style="padding:9px 14px;border:1.5px solid #d1d5db;border-radius:20px;font-size:13px;outline:none;cursor:pointer">
+     <option value="">Tous types</option><option>Location</option><option>Vente</option><option>Hotel</option>
+    </select>
+    <select id="mkt-immo-ville" onchange="renderMktImmobilier()" style="padding:9px 14px;border:1.5px solid #d1d5db;border-radius:20px;font-size:13px;outline:none;cursor:pointer">
+     <option value="">Toutes villes</option><option>Douala</option><option>Yaoundé</option><option>Bafoussam</option><option>Garoua</option><option>Kribi</option>
+    </select>
+   </div>
+   <div id="mkt-immo-content"></div>
+  </div>
+
+  <!--  SECTION COIFFURE  -->
+  <div class="mkt-section" id="mkt-coiffure">
+   <div class="mkt-section-header">
+    <div>
+     <div class="mkt-section-title"> Salon de Coiffure</div>
+     <div style="font-size:12px;color:#666;margin-top:2px">Services · Galerie photos · Réservation en ligne</div>
+    </div>
+   </div>
+   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button onclick="document.getElementById('mkt-coif-tab').value='services';renderMktCoiffure()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555"> Services</button>
+    <button onclick="document.getElementById('mkt-coif-tab').value='galerie';renderMktCoiffure()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555"> Galerie</button>
+    <input type="hidden" id="mkt-coif-tab" value="services">
+    <select id="mkt-coif-genre" onchange="renderMktCoiffure()" style="padding:9px 14px;border:1.5px solid #d1d5db;border-radius:20px;font-size:13px;outline:none;cursor:pointer">
+     <option value="">Homme & Femme</option><option value="femme"> Femme</option><option value="homme"> Homme</option>
+    </select>
+    <select id="mkt-coif-cat" onchange="renderMktCoiffure()" style="padding:9px 14px;border:1.5px solid #d1d5db;border-radius:20px;font-size:13px;outline:none;cursor:pointer">
+     <option value="">Toutes prestations</option>
+     <option>Tressage</option><option>Tissage</option><option>Défrisage</option>
+     <option>Couleur</option><option>Soin</option><option>Coupe</option>
+     <option>Locks</option><option>Ongles</option><option>Forfait</option><option>Abonnement</option>
+    </select>
+   </div>
+   <div id="mkt-coif-content"></div>
+  </div>
+
+  <!--  SECTION LOGISTIQUE  -->
+  <div class="mkt-section" id="mkt-logistique">
+   <div class="mkt-section-header">
+    <div>
+     <div class="mkt-section-title"> Logistique & Transport</div>
+     <div style="font-size:12px;color:#666;margin-top:2px">Tarifs colis intervilles · Flotte de véhicules</div>
+    </div>
+   </div>
+   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button onclick="document.getElementById('mkt-log-tab').value='tarifs';renderMktLogistique()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555"> Tarifs colis</button>
+    <button onclick="document.getElementById('mkt-log-tab').value='vehicules';renderMktLogistique()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555"> Flotte véhicules</button>
+    <input type="hidden" id="mkt-log-tab" value="tarifs">
+   </div>
+   <div id="mkt-log-content"></div>
+  </div>
+
+  <!--  SECTION AGRICULTURE  -->
+  <div class="mkt-section" id="mkt-agriculture">
+   <div class="mkt-section-header">
+    <div>
+     <div class="mkt-section-title"> Agriculture & Élevage</div>
+     <div style="font-size:12px;color:#666;margin-top:2px">Catalogue · Commander · Calendrier cultural</div>
+    </div>
+   </div>
+   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button onclick="document.getElementById('mkt-agri-tab').value='catalogue';renderMktAgriculture()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555"> Catalogue</button>
+    <button onclick="document.getElementById('mkt-agri-tab').value='calendrier';renderMktAgriculture()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555"> Calendrier cultural</button>
+    <input type="hidden" id="mkt-agri-tab" value="catalogue">
+    <input type="text" id="mkt-agri-search" placeholder=" Rechercher..." oninput="renderMktAgriculture()" style="flex:1;min-width:150px;padding:9px 14px;border:1.5px solid #d1d5db;border-radius:20px;font-size:13px;outline:none">
+    <select id="mkt-agri-cat" onchange="renderMktAgriculture()" style="padding:9px 14px;border:1.5px solid #d1d5db;border-radius:20px;font-size:13px;outline:none;cursor:pointer">
+     <option value="">Toutes catégories</option>
+     <option>Semences</option><option>Engrais</option><option>Pesticides</option>
+     <option>Outillage</option><option>Elevage</option><option>Animaux</option>
+     <option>Analyse</option><option>Protection</option>
+    </select>
+   </div>
+   <div id="mkt-agri-content"></div>
+  </div>
+
+
+  <!--  SECTION AUTOMOBILE  -->
+  <div class="mkt-section" id="mkt-automobile">
+   <div class="mkt-section-header">
+    <div>
+     <div class="mkt-section-title">Automobile &amp; Mecanique</div>
+     <div style="font-size:12px;color:#666;margin-top:2px">RDV mecanicien · Pieces et accessoires · Garages partenaires</div>
+    </div>
+   </div>
+   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button onclick="document.getElementById('mkt-auto-tab').value='services';renderMktAutomobile()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555">Services</button>
+    <button onclick="document.getElementById('mkt-auto-tab').value='pieces';renderMktAutomobile()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555">Pieces et accessoires</button>
+    <button onclick="document.getElementById('mkt-auto-tab').value='garages';renderMktAutomobile()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555">Garages partenaires</button>
+    <input type="hidden" id="mkt-auto-tab" value="services">
+   </div>
+   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <input type="text" id="mkt-auto-search" placeholder="Rechercher..." oninput="renderMktAutomobile()" style="flex:1;min-width:160px;padding:9px 14px;border:1.5px solid #d1d5db;border-radius:20px;font-size:13px;outline:none">
+    <select id="mkt-auto-cat" onchange="renderMktAutomobile()" style="padding:9px 14px;border:1.5px solid #d1d5db;border-radius:20px;font-size:13px;outline:none;cursor:pointer">
+     <option value="">Toutes categories</option>
+     <option>Entretien</option><option>Freinage</option><option>Moteur</option>
+     <option>Diagnostic</option><option>Confort</option><option>Lavage</option>
+     <option>Pneus</option><option>Electrique</option>
+     <option>Filtres</option><option>Lubrifiants</option><option>Allumage</option>
+     <option>Suspension</option><option>Accessoires</option>
+    </select>
+   </div>
+   <div id="mkt-auto-content"></div>
+  </div>
+
+  <!--  SECTION PRESSING  -->
+  <div class="mkt-section" id="mkt-pressing">
+   <div class="mkt-section-header">
+    <div>
+     <div class="mkt-section-title">Pressing &amp; Blanchisserie</div>
+     <div style="font-size:12px;color:#666;margin-top:2px">Tarifs · Nouveau depot · Points de depot</div>
+    </div>
+   </div>
+   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button onclick="document.getElementById('mkt-pressing-tab').value='tarifs';renderMktPressing()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555">Tarifs</button>
+    <button onclick="document.getElementById('mkt-pressing-tab').value='depot';renderMktPressing()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555">Nouveau depot</button>
+    <button onclick="document.getElementById('mkt-pressing-tab').value='points';renderMktPressing()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555">Points de depot</button>
+    <input type="hidden" id="mkt-pressing-tab" value="tarifs">
+   </div>
+   <div id="mkt-pressing-content"></div>
+  </div>
+
+
+  <!-- SECTION AUTOMOBILE -->
+  <div class="mkt-section" id="mkt-automobile">
+   <div class="mkt-section-header">
+    <div>
+     <div class="mkt-section-title">Garage & Automobile</div>
+     <div style="font-size:12px;color:#666;margin-top:2px">RDV mecanicien · Pieces et accessoires</div>
+    </div>
+   </div>
+   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button onclick="document.getElementById('mkt-auto-tab').value='rdv';renderMktAutomobile()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555">RDV Mecanicien</button>
+    <button onclick="document.getElementById('mkt-auto-tab').value='pieces';renderMktAutomobile()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555">Pieces et accessoires</button>
+    <input type="hidden" id="mkt-auto-tab" value="rdv">
+    <input type="text" id="mkt-auto-search" placeholder="Rechercher..." oninput="renderMktAutomobile()" style="flex:1;min-width:150px;padding:9px 14px;border:1.5px solid #d1d5db;border-radius:20px;font-size:13px;outline:none">
+    <select id="mkt-auto-cat" onchange="renderMktAutomobile()" style="padding:9px 14px;border:1.5px solid #d1d5db;border-radius:20px;font-size:13px;outline:none;cursor:pointer">
+     <option value="">Toutes categories</option>
+    </select>
+   </div>
+   <div id="mkt-auto-content"></div>
+  </div>
+
+  <!-- SECTION PRESSING -->
+  <div class="mkt-section" id="mkt-pressing">
+   <div class="mkt-section-header">
+    <div>
+     <div class="mkt-section-title">Pressing & Blanchisserie</div>
+     <div style="font-size:12px;color:#666;margin-top:2px">Tarifs · Nouveaux depots · Livraison</div>
+    </div>
+   </div>
+   <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <button onclick="document.getElementById('mkt-press-tab').value='tarifs';renderMktPressing()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555">Tarifs</button>
+    <button onclick="document.getElementById('mkt-press-tab').value='depots';renderMktPressing()" style="padding:8px 16px;border:1.5px solid #e5e7eb;border-radius:20px;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#555">Nos depots</button>
+    <input type="hidden" id="mkt-press-tab" value="tarifs">
+    <select id="mkt-press-cat" onchange="renderMktPressing()" style="padding:9px 14px;border:1.5px solid #d1d5db;border-radius:20px;font-size:13px;outline:none;cursor:pointer">
+     <option value="">Tous articles</option>
+     <option>Habillement</option><option>Linge maison</option><option>Sec</option>
+    </select>
+   </div>
+   <div id="mkt-press-content"></div>
+  </div>
+
+
+ </div>
+</div>
+
+<!-- ── MODAL DEVIS GÉNÉRIQUE ──────────────────────────────────── -->
+<div id="mkt-modal-devis" onclick="if(event.target===this)closeMkt('mkt-modal-devis')">
+ <div class="mkt-modal-inner">
+  <h3 id="mkt-devis-titre"> Demande de devis</h3>
+  <input type="hidden" id="mkt-devis-produit">
+  <input type="hidden" id="mkt-devis-type">
+  <div class="mkt-field">
+   <label>Votre nom *</label>
+   <input type="text" id="mkt-nom" placeholder="Votre nom complet">
+  </div>
+  <div class="mkt-field">
+   <label>Téléphone * (WhatsApp)</label>
+   <input type="tel" id="mkt-tel" placeholder="+237 6XX XX XX XX">
+  </div>
+  <div id="mkt-devis-extra"></div>
+  <div class="mkt-field">
+   <label>Message complémentaire</label>
+   <textarea id="mkt-message" rows="3" placeholder="Précisez vos besoins..."></textarea>
+  </div>
+  <button class="mkt-btn-submit" onclick="soumettreDevisMkt()"> Envoyer ma demande</button>
+  <button onclick="closeMkt('mkt-modal-devis')" style="width:100%;margin-top:8px;background:#f9fafb;border:1.5px solid #e5e7eb;padding:12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;color:#555">Annuler</button>
+ </div>
+</div>
+
+<!-- ── MODAL MENU RESTAURANT ──────────────────────────────────── -->
+<div id="mkt-menu-modal" onclick="if(event.target===this)closeMkt('mkt-menu-modal')">
+ <div class="mkt-modal-inner">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+   <div>
+    <h3 style="margin-bottom:4px" id="mkt-menu-nom">Restaurant</h3>
+    <div style="font-size:12px;color:#666" id="mkt-menu-info"></div>
+   </div>
+   <button onclick="closeMkt('mkt-menu-modal')" style="background:#f9fafb;border:1.5px solid #e5e7eb;padding:8px 14px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer">X</button>
+  </div>
+  <div id="mkt-menu-content"></div>
+  <div style="margin-top:14px;padding-top:14px;border-top:2px solid #f0f0f0;text-align:center">
+   <button onclick="closeMkt('mkt-menu-modal');openCart()" style="background:#007A3D;color:#fff;border:none;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer">Voir mon panier</button>
+  </div>
+ </div>
+</div>
+
+<!-- ════ BOTTOM NAVIGATION MOBILE ════ -->
+<nav id="boutique-bottom-nav" style="display:flex;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#fff;border-top:1.5px solid #e5e7eb;box-shadow:0 -4px 20px rgba(0,0,0,.10);padding-bottom:env(safe-area-inset-bottom,0px)">
+  <button onclick="scrollTop();setNavActive(this)" id="bnav-accueil" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;cursor:pointer;padding:8px 4px;min-height:54px;color:#6b7280;font-size:10px;font-weight:600;font-family:inherit;touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,122,61,.12)">
+    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/><path d="M9 21V12h6v9"/></svg>
+    <span>Accueil</span>
+  </button>
+  <button onclick="ouvrirMarketplace();setNavActive(this)" id="bnav-services" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;cursor:pointer;padding:8px 4px;min-height:54px;color:#6b7280;font-size:10px;font-weight:600;font-family:inherit;touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,122,61,.12)">
+    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
+    <span>Services</span>
+  </button>
+  <button onclick="ouvrirPanier();setNavActive(this)" id="bnav-panier" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;cursor:pointer;padding:8px 4px;min-height:54px;color:#6b7280;font-size:10px;font-weight:600;font-family:inherit;touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,122,61,.12);position:relative">
+    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+    <span id="bnav-cart-badge" style="display:none;position:absolute;top:5px;right:calc(50% - 18px);background:#e53e3e;color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:8px;text-align:center;line-height:16px;padding:0 3px">0</span>
+    <span>Panier</span>
+  </button>
+  <button onclick="ouvrirCompteClient();setNavActive(this)" id="bnav-compte" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;cursor:pointer;padding:8px 4px;min-height:54px;color:#6b7280;font-size:10px;font-weight:600;font-family:inherit;touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,122,61,.12)">
+    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span>Mon compte</span>
+  </button>
+</nav>
+
+
+<!-- ════ WIDGET SUPPORT CLIENT FLOTTANT ════ -->
+<div id="support-widget" style="position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;align-items:flex-end;gap:10px">
+
+  <!-- Boutons rapides (cachés par défaut) -->
+  <div id="support-quick-btns" style="display:none;flex-direction:column;gap:8px;align-items:flex-end">
+    <a href="https://wa.me/237693591479?text=Bonjour%2C%20j%27ai%20besoin%20d%27aide%20sur%20KAMER360" target="_blank"
+       style="display:flex;align-items:center;gap:10px;background:#25D366;color:#fff;padding:12px 16px;border-radius:50px;text-decoration:none;font-size:13px;font-weight:700;box-shadow:0 4px 16px rgba(37,211,102,.4)">
+      <span style="font-size:18px">📲</span> WhatsApp Support
+    </a>
+    <a href="tel:+237683392268"
+       style="display:flex;align-items:center;gap:10px;background:#007A3D;color:#fff;padding:12px 16px;border-radius:50px;text-decoration:none;font-size:13px;font-weight:700;box-shadow:0 4px 16px rgba(0,122,61,.4)">
+      <span style="font-size:18px">📞</span> Appeler le support
+    </a>
+    <button onclick="ouvrirSupportBoutique()"
+       style="display:flex;align-items:center;gap:10px;background:#1e40af;color:#fff;padding:12px 16px;border-radius:50px;border:none;font-size:13px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(30,64,175,.4)">
+      <span style="font-size:18px">✉️</span> Envoyer un message
+    </button>
+  </div>
+
+  <!-- Bouton principal -->
+  <button id="support-fab" onclick="toggleSupportWidget()"
+    style="width:58px;height:58px;border-radius:50%;background:#007A3D;border:none;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;font-size:26px;transition:transform .2s"
+    onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+    💬
+  </button>
+
+  <!-- Bulle d'invitation (visible 5 secondes au chargement) -->
+  <div id="support-bubble" style="position:absolute;bottom:70px;right:0;background:#fff;border-radius:14px;padding:10px 14px;box-shadow:0 4px 20px rgba(0,0,0,.15);font-size:12px;color:#374151;white-space:nowrap;border:1.5px solid #d1fae5">
+    <span style="font-weight:700;color:#007A3D">Besoin d'aide ?</span> On est là 👋
+    <div style="position:absolute;bottom:-8px;right:16px;width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid #fff"></div>
+  </div>
+</div>
+
+<!-- Modal message support boutique -->
+<div id="m-support-boutique" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:20px;width:90%;max-width:420px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="background:linear-gradient(135deg,#007A3D,#005C2E);padding:18px 20px;display:flex;justify-content:space-between;align-items:center">
+      <div style="color:#fff;font-weight:800;font-size:16px">💬 Contacter le support</div>
+      <button onclick="fermerSupportBoutique()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px">✕</button>
+    </div>
+    <div style="padding:20px">
+      <input id="bsup-nom" type="text" placeholder="Votre nom" style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;box-sizing:border-box;margin-bottom:10px;font-family:inherit">
+      <input id="bsup-tel" type="tel" placeholder="+237 6XX XX XX XX" style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;box-sizing:border-box;margin-bottom:10px;font-family:inherit">
+      <select id="bsup-sujet" style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;box-sizing:border-box;margin-bottom:10px;font-family:inherit;background:#fff">
+        <option value="">Sujet de votre demande...</option>
+        <option value="commande">Problème avec ma commande</option>
+        <option value="paiement">Problème de paiement</option>
+        <option value="livraison">Problème de livraison</option>
+        <option value="remboursement">Demande de remboursement</option>
+        <option value="produit">Question sur un produit</option>
+        <option value="autre">Autre</option>
+      </select>
+      <textarea id="bsup-msg" rows="4" placeholder="Décrivez votre problème..."
+        style="width:100%;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;box-sizing:border-box;resize:none;font-family:inherit;margin-bottom:14px"></textarea>
+      <button onclick="envoyerSupportBoutique()"
+        style="width:100%;background:#25D366;color:#fff;border:none;padding:13px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer">
+        📲 Envoyer via WhatsApp
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Widget support ──
+setTimeout(function() {
+  var b = document.getElementById('support-bubble');
+  if (b) b.style.display = 'none';
+}, 5000);
+
+function toggleSupportWidget() {
+  var btns = document.getElementById('support-quick-btns');
+  var bubble = document.getElementById('support-bubble');
+  if (bubble) bubble.style.display = 'none';
+  if (btns) btns.style.display = btns.style.display === 'none' ? 'flex' : 'none';
+}
+
+function ouvrirSupportBoutique() {
+  document.getElementById('support-quick-btns').style.display = 'none';
+  document.getElementById('m-support-boutique').style.display = 'flex';
+}
+
+function fermerSupportBoutique() {
+  document.getElementById('m-support-boutique').style.display = 'none';
+}
+
+function envoyerSupportBoutique() {
+  var nom   = document.getElementById('bsup-nom').value.trim();
+  var tel   = document.getElementById('bsup-tel').value.trim();
+  var sujet = document.getElementById('bsup-sujet').value;
+  var msg   = document.getElementById('bsup-msg').value.trim();
+  if (!msg) { alert('Veuillez écrire un message'); return; }
+  var txt = '🆘 *Support KAMER360*\n\n';
+  if (nom)   txt += '👤 ' + nom + '\n';
+  if (tel)   txt += '📞 ' + tel + '\n';
+  if (sujet) txt += '📋 Sujet: ' + sujet + '\n';
+  txt += '\n💬 ' + msg;
+  txt += '\n\n_' + new Date().toLocaleString('fr-FR') + '_';
+  window.open('https://wa.me/237693591479?text=' + encodeURIComponent(txt), '_blank');
+  fermerSupportBoutique();
+}
+</script>
+
+<!-- ════════════════ MODALS LÉGAUX ════════════════ -->
+<div id="m-legal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10001;align-items:center;justify-content:center;padding:16px">
+  <div class="tw-animate-[fadeIn_0.2s_ease-out]" style="background:#fff;border-radius:20px;width:100%;max-width:680px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="background:linear-gradient(135deg,#007A3D,#005C2E);padding:18px 24px;border-radius:20px 20px 0 0;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+      <div id="m-legal-titre" style="color:#fff;font-weight:800;font-size:17px"></div>
+      <button onclick="fermerLegal()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px">✕</button>
+    </div>
+    <div style="display:flex;border-bottom:2px solid #e5e7eb;flex-shrink:0;background:#f9fafb">
+      <button onclick="ouvrirLegal('cgv')" id="tab-cgv" class="tw-transition-colors tw-duration-150 hover:tw-bg-gray-100" style="flex:1;padding:12px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;color:#6b7280">📋 CGV</button>
+      <button onclick="ouvrirLegal('confidentialite')" id="tab-confidentialite" class="tw-transition-colors tw-duration-150 hover:tw-bg-gray-100" style="flex:1;padding:12px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;color:#6b7280">🔒 Confidentialité</button>
+      <button onclick="ouvrirLegal('faq')" id="tab-faq" class="tw-transition-colors tw-duration-150 hover:tw-bg-gray-100" style="flex:1;padding:12px;border:none;background:none;font-size:13px;font-weight:600;cursor:pointer;color:#6b7280">❓ FAQ</button>
+    </div>
+    <div id="m-legal-content" style="overflow-y:auto;padding:24px;flex:1;font-size:13px;line-height:1.7;color:#374151"></div>
+    <div style="padding:16px 24px;border-top:1px solid #e5e7eb;text-align:center;flex-shrink:0">
+      <button onclick="fermerLegal()" style="background:#007A3D;color:#fff;border:none;padding:10px 32px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">J'ai compris ✓</button>
+    </div>
+  </div>
+</div>
+<script>
+var _LEGAL = {
+  cgv: '\n<h2 style="color:#007A3D;font-size:20px;margin-bottom:4px">Conditions Générales de Vente (CGV)</h2>\n<p style="color:#6b7280;font-size:12px;margin-bottom:20px">Dernière mise à jour : 08 juin 2026 — KAMER360 / NGAPET LEMBE IDRISS CARLOS</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">Article 1 — Objet et champ d\'application</h3>\n<p>Les présentes Conditions Générales de Vente (CGV) régissent toutes les transactions commerciales effectuées sur la plateforme KAMER360, exploitée par NGAPET LEMBE IDRISS CARLOS, dont le siège social est situé à Bepanda, Douala, Cameroun. Toute commande passée sur la plateforme implique l\'acceptation pleine et entière des présentes CGV.</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">Article 2 — Produits et services proposés</h3>\n<p>KAMER360 est une marketplace multiservice permettant la vente de produits physiques (alimentation, électronique, BTP, agriculture, santé, énergie) et de services (menuiserie, restauration, logistique, immobilier, coiffure, pressing, automobile, éducation). Chaque gérant inscrit est responsable de l\'exactitude des informations relatives à ses produits et services.</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">Article 3 — Prix et modalités de paiement</h3>\n<p>Tous les prix affichés sont en Francs CFA (FCFA) TTC. KAMER360 se réserve le droit de modifier ses prix à tout moment. Les paiements sont acceptés via :<br>\n• <strong>MTN Mobile Money</strong> via le code USSD *126#<br>\n• <strong>Orange Money</strong> via le code USSD #150#<br>\n• Paiement à la livraison (selon disponibilité du gérant)<br>\nLe paiement est dû intégralement lors de la validation de la commande.</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">Article 4 — Commandes</h3>\n<p>Toute commande est définitive après validation du paiement. Le client reçoit une confirmation par message ou notification. KAMER360 se réserve le droit d\'annuler toute commande en cas de rupture de stock, d\'erreur de prix manifeste ou de suspicion de fraude.</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">Article 5 — Livraison</h3>\n<p>Les délais de livraison indicatifs sont :<br>\n• <strong>Livraison locale (même ville)</strong> : 2 à 4 heures<br>\n• <strong>Livraison inter-villes</strong> : 1 à 3 jours ouvrables<br>\n• <strong>Livraison nationale</strong> : 3 à 7 jours ouvrables<br>\nLes frais de livraison sont calculés automatiquement selon la distance et le poids. KAMER360 ne saurait être tenu responsable des retards causés par des événements de force majeure (grèves, intempéries, coupures réseau).</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">Article 6 — Droit de rétractation et retours</h3>\n<p>Le client dispose de <strong>48 heures</strong> après réception pour signaler tout produit défectueux, endommagé ou non conforme. Les produits frais (alimentation périssable) sont exclus du droit de retour. Pour les autres produits, le retour est accepté si le produit est dans son emballage d\'origine, non utilisé. Le remboursement est effectué dans un délai de 5 à 7 jours ouvrables.</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">Article 7 — Garanties</h3>\n<p>Les produits vendus bénéficient de la garantie légale de conformité prévue par la loi camerounaise. Pour les produits électroniques et électroménagers, une garantie minimale de 3 mois est applicable. Les services (menuiserie, BTP, installation énergie) font l\'objet d\'une garantie de parfait achèvement de 30 jours.</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">Article 8 — Responsabilité des gérants</h3>\n<p>Chaque gérant inscrit sur KAMER360 est seul responsable de la qualité, de la conformité et de l\'authenticité des produits et services qu\'il propose. KAMER360 agit en tant qu\'intermédiaire de mise en relation et ne peut être tenu responsable des litiges entre gérants et clients.</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">Article 9 — Litiges et médiation</h3>\n<p>En cas de litige, le client est invité à contacter notre service support via WhatsApp au +237 693 59 14 79 ou par email à lembetiny02@gmail.com. En l\'absence de résolution amiable, les parties conviennent de soumettre le litige aux tribunaux compétents de Douala, Cameroun, conformément à la législation OHADA applicable.</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">Article 10 — Modifications des CGV</h3>\n<p>KAMER360 se réserve le droit de modifier les présentes CGV à tout moment. Les modifications entrent en vigueur dès leur publication sur la plateforme. L\'utilisation continue de la plateforme après modification vaut acceptation des nouvelles CGV.</p>\n',
+  confidentialite: '\n<h2 style="color:#007A3D;font-size:20px;margin-bottom:4px">Politique de Confidentialité</h2>\n<p style="color:#6b7280;font-size:12px;margin-bottom:20px">Dernière mise à jour : 08 juin 2026 — KAMER360 / NGAPET LEMBE IDRISS CARLOS</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">1. Qui sommes-nous ?</h3>\n<p>KAMER360 est une super-application e-commerce camerounaise exploitée par NGAPET LEMBE IDRISS CARLOS, basée à Bepanda, Douala, Cameroun. Nous prenons la protection de vos données personnelles très au sérieux et nous engageons à respecter votre vie privée conformément à la Loi N°2010/012 du 21 décembre 2010 relative à la cybersécurité et à la cybercriminalité au Cameroun.</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">2. Données collectées</h3>\n<p><strong>Données fournies directement :</strong><br>\n• Nom, prénom, adresse email, numéro de téléphone<br>\n• Adresse de livraison<br>\n• Informations de compte (nom du supermarché, ville, secteur d\'activité)<br>\n• Historique des commandes et transactions<br><br>\n<strong>Données collectées automatiquement :</strong><br>\n• Adresse IP et type de navigateur<br>\n• Pages visitées et durée de visite<br>\n• Préférences et historique de navigation sur la plateforme<br>\n• Données de localisation approximative (ville)</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">3. Utilisation de vos données</h3>\n<p>Vos données personnelles sont utilisées pour :<br>\n• Gérer votre compte et vos commandes<br>\n• Traiter et suivre vos paiements Mobile Money<br>\n• Vous envoyer des confirmations de commande et notifications<br>\n• Améliorer nos services et personnaliser votre expérience<br>\n• Contacter le service de livraison pour acheminer vos commandes<br>\n• Prévenir la fraude et assurer la sécurité de la plateforme<br>\n• Respecter nos obligations légales</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">4. Partage de vos données</h3>\n<p>Nous ne vendons <strong>jamais</strong> vos données personnelles à des tiers. Vos données peuvent être partagées avec :<br>\n• <strong>Les gérants</strong> : uniquement les informations nécessaires à la livraison (nom, téléphone, adresse)<br>\n• <strong>Supabase</strong> (hébergement base de données) — serveurs sécurisés<br>\n• <strong>NotchPay / CinetPay</strong> (traitement des paiements) — certifiés PCI-DSS<br>\n• <strong>Les autorités</strong> en cas d\'obligation légale</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">5. Conservation des données</h3>\n<p>Vos données sont conservées pendant la durée de votre relation avec KAMER360 et jusqu\'à 3 ans après la clôture de votre compte, conformément aux obligations légales camerounaises. Les données de transactions sont conservées 10 ans pour des raisons comptables et fiscales.</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">6. Vos droits</h3>\n<p>Conformément à la loi applicable, vous disposez des droits suivants :<br>\n• <strong>Droit d\'accès</strong> : obtenir une copie de vos données<br>\n• <strong>Droit de rectification</strong> : corriger des données inexactes<br>\n• <strong>Droit à l\'effacement</strong> : supprimer votre compte et vos données<br>\n• <strong>Droit d\'opposition</strong> : vous opposer au traitement de vos données<br>\nPour exercer ces droits, contactez-nous à : lembetiny02@gmail.com</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">7. Sécurité des données</h3>\n<p>Nous mettons en œuvre des mesures techniques et organisationnelles appropriées pour protéger vos données :<br>\n• Chiffrement HTTPS (SSL/TLS) sur toutes les communications<br>\n• Authentification sécurisée via Supabase Auth<br>\n• Accès aux données limité au personnel autorisé<br>\n• Sauvegardes régulières des données</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">8. Cookies et stockage local</h3>\n<p>KAMER360 utilise le stockage local (localStorage) de votre navigateur pour mémoriser vos préférences, votre panier et vos données de session. Aucun cookie publicitaire tiers n\'est utilisé. Vous pouvez effacer ces données à tout moment depuis les paramètres de votre navigateur.</p>\n\n<h3 style="color:#111;font-size:15px;margin:16px 0 8px">9. Contact</h3>\n<p>Pour toute question relative à vos données personnelles :<br>\n📧 lembetiny02@gmail.com<br>\n📞 +237 683 39 22 68<br>\n📍 Bepanda, Douala, Cameroun</p>\n',
+  faq: '\n<h2 style="color:#007A3D;font-size:20px;margin-bottom:4px">Foire Aux Questions (FAQ)</h2>\n<p style="color:#6b7280;font-size:12px;margin-bottom:20px">Toutes les réponses à vos questions sur KAMER360</p>\n\n<h3 style="color:#007A3D;font-size:14px;margin:16px 0 6px;text-transform:uppercase;letter-spacing:.5px">COMMANDES</h3>\n\n<p><strong>Comment passer une commande ?</strong><br>\nParcourez le catalogue, ajoutez vos articles au panier, puis cliquez sur "Valider la commande". Choisissez votre mode de paiement (MTN MoMo ou Orange Money) et confirmez. Vous recevrez une confirmation immédiate.</p>\n\n<p><strong>Puis-je modifier ma commande après validation ?</strong><br>\nNon. Une commande validée et payée ne peut pas être modifiée. Contactez immédiatement notre support si vous avez fait une erreur. Si la commande n\'a pas encore été préparée, nous ferons notre possible pour l\'annuler.</p>\n\n<p><strong>Comment suivre ma commande ?</strong><br>\nDans la section "Mon compte" de la boutique, consultez l\'historique de vos commandes avec les statuts : Reçue, En préparation, En livraison, Livrée. Vous recevrez aussi des notifications WhatsApp à chaque étape.</p>\n\n<p><strong>Que faire si je reçois un mauvais produit ?</strong><br>\nPhotographiez le produit reçu et contactez notre support dans les 48 heures via WhatsApp (+237 693 59 14 79) ou le bouton "Support" de l\'application. Un remboursement ou échange sera traité sous 48h.</p>\n\n<h3 style="color:#007A3D;font-size:14px;margin:16px 0 6px;text-transform:uppercase;letter-spacing:.5px">PAIEMENT</h3>\n\n<p><strong>Quels modes de paiement sont acceptés ?</strong><br>\n• MTN Mobile Money (*126#)<br>\n• Orange Money (#150#)<br>\n• Paiement à la livraison (selon le gérant)<br>\nLes paiements par carte bancaire ne sont pas encore disponibles.</p>\n\n<p><strong>Mon paiement a été débité mais je n\'ai pas de confirmation. Que faire ?</strong><br>\nAttendez 5 minutes — les paiements Mobile Money peuvent prendre du temps. Si aucune confirmation n\'arrive, contactez le support avec votre numéro de transaction Mobile Money. Nous vérifierons et confirmerons manuellement.</p>\n\n<p><strong>Comment obtenir un remboursement ?</strong><br>\nLes remboursements sont traités via le même canal de paiement utilisé (MTN MoMo ou Orange Money), sous 5 à 7 jours ouvrables. Contactez le support avec votre numéro de commande.</p>\n\n<p><strong>Les paiements sont-ils sécurisés ?</strong><br>\nOui. KAMER360 utilise des partenaires de paiement certifiés (NotchPay, CinetPay) qui respectent les normes de sécurité bancaires. Vos informations de paiement ne sont jamais stockées sur nos serveurs.</p>\n\n<h3 style="color:#007A3D;font-size:14px;margin:16px 0 6px;text-transform:uppercase;letter-spacing:.5px">LIVRAISON</h3>\n\n<p><strong>Quels sont les délais de livraison ?</strong><br>\n• Même ville : 2 à 4 heures<br>\n• Inter-villes : 1 à 3 jours<br>\n• National : 3 à 7 jours ouvrables<br>\nLes délais peuvent varier selon la disponibilité du livreur et la zone géographique.</p>\n\n<p><strong>Livrez-vous dans toutes les régions du Cameroun ?</strong><br>\nNous livrons dans toutes les 10 régions du Cameroun. Cependant, les délais et tarifs varient selon l\'éloignement. Pour les zones reculées, contactez-nous avant de passer commande.</p>\n\n<p><strong>Que faire si ma livraison est en retard ?</strong><br>\nContactez le support avec votre numéro de commande. Nous localiserons votre livreur et vous informerons du nouveau délai prévu.</p>\n\n<h3 style="color:#007A3D;font-size:14px;margin:16px 0 6px;text-transform:uppercase;letter-spacing:.5px">MON COMPTE</h3>\n\n<p><strong>Comment créer un compte client ?</strong><br>\nCliquez sur "Mon compte" dans la barre de navigation de la boutique, puis "Créer un compte". Remplissez le formulaire avec votre nom, téléphone, email et mot de passe. Votre compte est actif immédiatement.</p>\n\n<p><strong>J\'ai oublié mon mot de passe. Comment le réinitialiser ?</strong><br>\nSur l\'écran de connexion, cliquez "Mot de passe oublié". Un lien de réinitialisation sera envoyé à votre adresse email. Si vous n\'avez plus accès à cet email, contactez le support.</p>\n\n<p><strong>Comment supprimer mon compte ?</strong><br>\nEnvoyez une demande de suppression à lembetiny02@gmail.com depuis l\'email associé à votre compte. La suppression sera effectuée sous 7 jours ouvrables.</p>\n\n<h3 style="color:#007A3D;font-size:14px;margin:16px 0 6px;text-transform:uppercase;letter-spacing:.5px">GÉRANTS</h3>\n\n<p><strong>Comment devenir gérant sur KAMER360 ?</strong><br>\nDemandez un code d\'invitation à l\'administrateur (WhatsApp : +237 693 59 14 79). Rendez-vous sur la page d\'inscription de l\'espace gérant, entrez le code, remplissez le formulaire et votre compte est actif immédiatement.</p>\n\n<p><strong>Quels sont les frais pour les gérants ?</strong><br>\nKAMER360 prélève une commission de 3 à 8% sur chaque vente selon la catégorie de produit. Des abonnements mensuels (5 000 à 75 000 FCFA) donnent accès à des fonctionnalités avancées (marketplace publique, statistiques, IA).</p>\n\n<p><strong>Comment ajouter des produits ?</strong><br>\nDans l\'espace gérant, allez dans "Produits" puis cliquez "+ Nouveau produit". Remplissez le nom, la description, le prix, le stock et ajoutez une photo. Le produit sera visible sur la boutique immédiatement.</p>\n\n<p><strong>Comment recevoir les paiements de mes clients ?</strong><br>\nLes paiements sont collectés via Mobile Money et reversés sur votre compte après déduction de la commission KAMER360, dans un délai de 24 à 48 heures ouvrables.</p>\n\n<h3 style="color:#007A3D;font-size:14px;margin:16px 0 6px;text-transform:uppercase;letter-spacing:.5px">TECHNIQUE</h3>\n\n<p><strong>L\'application fonctionne-t-elle sans internet ?</strong><br>\nOui, en mode hors-ligne partiel. Vous pouvez consulter les produits déjà chargés et préparer des commandes. La synchronisation se fait automatiquement au retour de la connexion.</p>\n\n<p><strong>Comment installer l\'application sur mon téléphone ?</strong><br>\nKAMER360 est une PWA (Progressive Web App). Sur Chrome mobile, une bannière "Installer l\'application" apparaît automatiquement. Sur iOS (Safari), utilisez le menu "Partager" puis "Sur l\'écran d\'accueil".</p>\n\n<p><strong>Sur quels appareils fonctionne KAMER360 ?</strong><br>\nKAMER360 fonctionne sur tout navigateur web moderne (Chrome, Firefox, Safari, Edge) sur smartphone, tablette et ordinateur. Pour une meilleure expérience, nous recommandons Chrome sur Android.</p>\n'
+};
+function ouvrirLegal(type) {
+  var modal = document.getElementById('m-legal');
+  var content = document.getElementById('m-legal-content');
+  var titre = document.getElementById('m-legal-titre');
+  ['cgv','confidentialite','faq'].forEach(function(t) {
+    var tab = document.getElementById('tab-'+t);
+    if (tab) { tab.style.color='#6b7280'; tab.style.fontWeight='600'; tab.style.borderBottom='2px solid transparent'; }
+  });
+  var activeTab = document.getElementById('tab-'+type);
+  if (activeTab) { activeTab.style.color='#007A3D'; activeTab.style.borderBottom='2px solid #007A3D'; }
+  var titles = {cgv:'Conditions Générales de Vente', confidentialite:'Politique de Confidentialité', faq:'Foire Aux Questions'};
+  titre.textContent = titles[type] || '';
+  content.innerHTML = _LEGAL[type] || '';
+  content.scrollTop = 0;
+  modal.style.display = 'flex';
+}
+function fermerLegal() { document.getElementById('m-legal').style.display = 'none'; }
+function inscrireClientVerifie() {
+  var cgu = document.getElementById('cli-reg-cgu');
+  if (!cgu || !cgu.checked) { alert('Veuillez accepter les CGV et la politique de confidentialité pour continuer.'); return; }
+  if (typeof inscrireClient === 'function') inscrireClient();
+}
+document.addEventListener('DOMContentLoaded', function() {
+  var m = document.getElementById('m-legal');
+  if (m) m.addEventListener('click', function(e) { if (e.target === this) fermerLegal(); });
+});
+</script>
+
+<!-- ════ MODAL SUIVI COMMANDE ════ -->
+<div id="m-suivi-commande" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10003;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:20px;width:100%;max-width:480px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="background:linear-gradient(135deg,#007A3D,#005C2E);padding:18px 24px;border-radius:20px 20px 0 0;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+      <div>
+        <div style="font-size:17px;font-weight:800;color:#fff">&#128230; Mes commandes</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px">Suivi en temps r&eacute;el</div>
+      </div>
+      <button onclick="fermerSuiviCommande()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px">&#10005;</button>
+    </div>
+    <div id="suivi-content" style="overflow-y:auto;padding:16px;flex:1"></div>
+    <div style="padding:14px 16px;border-top:1px solid #e5e7eb;flex-shrink:0;text-align:center">
+      <button onclick="fermerSuiviCommande()" style="background:#007A3D;color:#fff;border:none;padding:10px 32px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ MODAL MOT DE PASSE OUBLIÉ CLIENT ════ -->
+<div id="m-forgot-client" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10002;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:20px;width:100%;max-width:420px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="background:linear-gradient(135deg,#007A3D,#005C2E);padding:20px 24px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:17px;font-weight:800;color:#fff">&#128273; Mot de passe oubli&eacute;</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.75);margin-top:2px">R&eacute;initialiser votre mot de passe client</div>
+      </div>
+      <button onclick="fermerForgotClient()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:18px">&#10005;</button>
+    </div>
+    <div id="fc-step1" style="padding:24px">
+      <div style="background:#f0fdf4;border:1.5px solid #d1fae5;border-radius:12px;padding:12px;margin-bottom:18px;font-size:13px;color:#065f46;line-height:1.5">
+        &#128161; Entrez votre email. Vous recevrez un lien pour cr&eacute;er un nouveau mot de passe.
+      </div>
+      <label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">VOTRE EMAIL</label>
+      <input id="fc-email" type="email" placeholder="votre@email.com"
+        style="width:100%;padding:12px 14px;border:2px solid #e5e7eb;border-radius:12px;font-size:14px;box-sizing:border-box;font-family:inherit;outline:none"
+        onfocus="this.style.borderColor='#007A3D'" onblur="this.style.borderColor='#e5e7eb'"
+        onkeydown="if(event.key==='Enter')envoyerResetClient()">
+      <div id="fc-msg" style="display:none;margin-top:10px;padding:10px 14px;border-radius:10px;font-size:13px;line-height:1.5"></div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button onclick="fermerForgotClient()" style="flex:1;padding:12px;border:2px solid #e5e7eb;border-radius:10px;font-size:14px;cursor:pointer;background:#fff;font-family:inherit">Annuler</button>
+        <button onclick="envoyerResetClient()" id="fc-btn" style="flex:2;padding:12px;background:#007A3D;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">&#128232; Envoyer le lien</button>
+      </div>
+    </div>
+    <div id="fc-step2" style="display:none;padding:24px;text-align:center">
+      <div style="font-size:48px;margin-bottom:12px">&#128236;</div>
+      <div style="font-size:18px;font-weight:800;color:#007A3D;margin-bottom:8px">Email envoy&eacute; !</div>
+      <p style="font-size:13px;color:#6b7280;line-height:1.6;margin:0 0 16px">V&eacute;rifiez votre boite mail <strong id="fc-email-confirm"></strong>.<br>Cliquez sur le lien pour cr&eacute;er votre nouveau mot de passe.</p>
+      <div style="background:#f0fdf4;border-radius:12px;padding:12px;margin-bottom:16px;font-size:13px;color:#065f46;text-align:left;line-height:1.8">
+        1. Ouvrez l&#8217;email KAMER360<br>
+        2. Cliquez &#171;&#8239;R&eacute;initialiser mon mot de passe&#8239;&#187;<br>
+        3. Entrez votre nouveau mot de passe<br>
+        4. Reconnectez-vous
+      </div>
+      <button onclick="fermerForgotClient()" style="width:100%;padding:12px;background:#007A3D;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">Fermer</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
