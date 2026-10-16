@@ -1,4 +1,3 @@
-
 // ══════════════════════════════════════════════════════════════
 //  GESTIONNAIRE D'ERREURS CENTRALISÉ — kamer360
 //  Remplace les catch vides par un logging silencieux en prod
@@ -779,14 +778,17 @@ async function chargerProduitsGerant() {
  renderProds();
  renderCat();
  console.log('[Produits] ' + PRODS.length + ' produits charges depuis Supabase');
- // Rafraîchir le dashboard pour afficher le bon nombre de produits réels
+ // Toujours rafraîchir le dashboard — peu importe si la page est active ou non
+ // (PRODS était vide au 1er rendu, maintenant il a les vrais produits)
  if (typeof renderDashboard === 'function') {
-   var dashPage = document.getElementById('page-dashboard');
-   if (dashPage && dashPage.classList.contains('active')) renderDashboard();
+   renderDashboard();
  }
- // Mettre à jour le badge produits dans la sidebar
+ // Mettre à jour le compteur produits dans la sidebar
  var bProd = document.getElementById('b-prod');
  if (bProd) bProd.textContent = PRODS.length;
+ // Mettre à jour aussi le compteur dans les stats dashboard si visible
+ var statProd = document.getElementById('dash-nb-produits');
+ if (statProd) statProd.textContent = PRODS.length;
  }
  } catch(e) { console.warn('[Produits] chargement Supabase:', e); }
 }
